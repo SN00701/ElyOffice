@@ -10,7 +10,7 @@ When the year is 2026, ask for the product instead and let the checks
 that follow (the compiler, the Windows SDK) decide whether the
 installation is usable.
 diff --git a/configure.ac b/configure.ac
-index 9f67ee4..902ff76 100644
+index 9f67ee4..209ff87 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -4515,6 +4515,13 @@ find_msvc()
@@ -22,7 +22,7 @@ index 9f67ee4..902ff76 100644
 +        # that follow look for the compiler and the Windows SDK, and they
 +        # decide whether the installation is usable.
 +        if test -z "$vswhereoutput" && test "$ver" = "18.0"; then
-+            vswhereoutput=`$vswhere -products \* -version "@<:@ $ver , $(expr ${ver%%.*} + 1) @:}@" -property installationPath | head -1`
++            vswhereoutput=`$vswhere -products \* -version "@<:@ $ver , $(expr ${ver%%.*} + 1) @:>@" -property installationPath | head -1`
 +        fi
          # Fall back to all MS products (this includes VC++ Build Tools)
          if ! test -n "$vswhereoutput"; then
