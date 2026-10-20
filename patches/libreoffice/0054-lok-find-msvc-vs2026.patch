@@ -11,7 +11,7 @@ folder whose name has a space cannot be used at all (the build would need
 the short names, which may be turned off), so the build may hand over a
 path of its own through ELY_VS_ALIAS; that path is used as it is.
 diff --git a/configure.ac b/configure.ac
-index 9f67ee4..e672c9f 100644
+index 9f67ee4..2d65f9f 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -4515,6 +4515,22 @@ find_msvc()
@@ -37,3 +37,18 @@ index 9f67ee4..e672c9f 100644
          # Fall back to all MS products (this includes VC++ Build Tools)
          if ! test -n "$vswhereoutput"; then
              AC_MSG_CHECKING([VC++ Build Tools and similar])
+@@ -4541,6 +4557,14 @@ find_msvc()
+             vcyear=2026
+             vctoolset=v145
+         esac
++        # A newer toolset may be installed with only its auxiliary files,
++        # so take the one that has the compiler.
++        for toolset in `ls $vctest/VC/Tools/MSVC -A1r`; do
++            if test -f "$vctest/VC/Tools/MSVC/$toolset/bin/Hostx64/x64/cl.exe"; then
++                vcbuildnumber=$toolset
++                break
++            fi
++        done
+         vcbuildnumber=`ls $vctest/VC/Tools/MSVC -A1r | head -1`
+ 
+     fi
