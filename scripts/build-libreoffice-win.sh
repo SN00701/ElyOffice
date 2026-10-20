@@ -116,6 +116,18 @@ if [ -d "/cygdrive/d/Program Files/Microsoft Visual Studio/18/Community" ]; then
 fi
 options+=(--with-visual-studio="$vs")
 
+# Visual Studio sits in a folder whose name has a space, and LibreOffice's
+# configure cannot use such a path (it would need the short names, which this
+# machine has turned off).  A junction with a short name of its own solves
+# it, and a junction needs no administrator rights.
+if [ -z "${ELY_VS_ALIAS:-}" ] && [ "$vs" = "2026" ]; then
+  powershell.exe -NoProfile -Command "if (-not (Test-Path 'F:\VS18\Common7')) { cmd /c mklink /J F:\VS18 'D:\Program Files\Microsoft Visual Studio\18\Community' }" >/dev/null 2>&1 || true
+  if [ -d "/cygdrive/f/VS18/VC/Tools/MSVC" ]; then
+    export ELY_VS_ALIAS='F:\VS18'
+    echo "build-libreoffice-win: Visual Studio is reached through $ELY_VS_ALIAS"
+  fi
+fi
+
 # Cygwin's make, never Git Bash's; MSYSTEM misleads the build.
 unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
 export PATH=/opt/lo/bin:$PATH

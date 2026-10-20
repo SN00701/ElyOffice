@@ -6,21 +6,27 @@ does not register that id, so every query comes back empty and the build
 stops with "no Visual Studio 2026 installation found" -- even though the
 compiler is there.
 
-When the year is 2026, ask for the product instead and let the checks
-that follow (the compiler, the Windows SDK) decide whether the
-installation is usable.
+When the year is 2026, ask for the product itself.  A Visual Studio in a
+folder whose name has a space cannot be used at all (the build would need
+the short names, which may be turned off), so the build may hand over a
+path of its own through ELY_VS_ALIAS; that path is used as it is.
 diff --git a/configure.ac b/configure.ac
-index 9f67ee4..2fd7bda 100644
+index 9f67ee4..e672c9f 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -4515,6 +4515,17 @@ find_msvc()
+@@ -4515,6 +4515,22 @@ find_msvc()
          if test -z "$vswhereoutput"; then
              vswhereoutput=`$vswhere -prerelease -version "@<:@ $ver , $(expr ${ver%%.*} + 1) @:}@" -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | head -1`
          fi
 +        # Visual Studio 2026 does not register the old component id, so the
 +        # queries above find nothing.  Ask for the product itself; the checks
 +        # that follow look for the compiler and the Windows SDK, and they
-+        # decide whether the installation is usable.
++        # decide whether the installation is usable.  A path with a space in
++        # it cannot be used at all, so the build may hand over a path of
++        # its own; that one is taken as it is.
++        if test -z "$vswhereoutput" && test -n "$ELY_VS_ALIAS"; then
++            vswhereoutput="$ELY_VS_ALIAS"
++        fi
 +        if test -z "$vswhereoutput"; then
 +            case "$ver" in
 +            18 | 18.0)
