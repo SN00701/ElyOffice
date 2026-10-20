@@ -1,4 +1,4 @@
-/// The eight apps, in PRD order.
+/// The eight apps, in PRD order, plus the one window that holds them all.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AppId {
     Doc,
@@ -9,10 +9,12 @@ pub enum AppId {
     Tree,
     Mark,
     Agent,
+    /// MPelyoffice: the one window with every document kind in one tab strip.
+    Office,
 }
 
 impl AppId {
-    pub const ALL: [AppId; 8] = [
+    pub const ALL: [AppId; 9] = [
         AppId::Doc,
         AppId::Table,
         AppId::Show,
@@ -21,11 +23,14 @@ impl AppId {
         AppId::Tree,
         AppId::Mark,
         AppId::Agent,
+        AppId::Office,
     ];
 
     /// The macOS bundle identifier `packaging/macos/bundle.sh` writes.
     pub fn bundle_id(self) -> String {
-        format!("ely.zacharyzhang.office.{}", &self.slug()["ely-".len()..])
+        let slug = self.slug();
+        let suffix = slug.strip_prefix("ely-").unwrap_or(slug);
+        format!("ely.zacharyzhang.office.{suffix}")
     }
 
     pub fn name(self) -> &'static str {
@@ -38,6 +43,7 @@ impl AppId {
             AppId::Tree => "ElyTree",
             AppId::Mark => "ElyMark",
             AppId::Agent => "ElyAgent",
+            AppId::Office => "MPelyoffice",
         }
     }
 
@@ -51,6 +57,7 @@ impl AppId {
             AppId::Tree => "ely-tree",
             AppId::Mark => "ely-mark",
             AppId::Agent => "ely-agent",
+            AppId::Office => "mpelyoffice",
         }
     }
 }
@@ -59,7 +66,7 @@ impl AppId {
 mod tests {
     use super::AppId::{self, *};
 
-    const IN_PRD_ORDER: [AppId; 8] = AppId::ALL;
+    const IN_PRD_ORDER: [AppId; 9] = AppId::ALL;
 
     #[test]
     fn bundle_ids_match_the_packaging() {
@@ -76,7 +83,7 @@ mod tests {
             names,
             [
                 "ElyDoc", "ElyTable", "ElyShow", "ElyPDF", "ElyMail", "ElyTree", "ElyMark",
-                "ElyAgent"
+                "ElyAgent", "MPelyoffice"
             ]
         );
     }
@@ -94,8 +101,16 @@ mod tests {
                 "ely-mail",
                 "ely-tree",
                 "ely-mark",
-                "ely-agent"
+                "ely-agent",
+                "mpelyoffice"
             ]
         );
+    }
+
+    #[test]
+    fn the_one_window_has_its_own_name_and_slug() {
+        assert_eq!(Office.name(), "MPelyoffice");
+        assert_eq!(Office.slug(), "mpelyoffice");
+        assert_eq!(Office.bundle_id(), "ely.zacharyzhang.office.mpelyoffice");
     }
 }

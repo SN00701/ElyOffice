@@ -25,7 +25,7 @@ actions!(
 
 actions!(
     apps,
-    [OpenElyDoc, OpenElyTable, OpenElyShow, OpenElyPdf, OpenElyMail, OpenElyTree, OpenElyMark, OpenElyAgent]
+    [OpenElyDoc, OpenElyTable, OpenElyShow, OpenElyPdf, OpenElyMail, OpenElyTree, OpenElyMark, OpenElyAgent, OpenElyOffice]
 );
 
 /// The main window's own quit, run from any window.
@@ -62,6 +62,7 @@ pub fn switch_to(app: AppId) -> Box<dyn Action> {
         AppId::Tree => Box::new(OpenElyTree),
         AppId::Mark => Box::new(OpenElyMark),
         AppId::Agent => Box::new(OpenElyAgent),
+        AppId::Office => Box::new(OpenElyOffice),
     }
 }
 

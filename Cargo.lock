@@ -2030,6 +2030,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ely-engine"
+version = "0.1.9"
+dependencies = [
+ "anyhow",
+ "ely-gpui-component",
+ "ely-platform",
+ "encoding_rs",
+ "gpui-pre",
+ "log",
+ "serde",
+]
+
+[[package]]
 name = "ely-files"
 version = "0.1.9"
 dependencies = [
@@ -4838,6 +4851,33 @@ checksum = "bb85c154ba489f01b25c0d36ae69a87e4a1c73a72631fc6c0eb6dde34a73e44b"
 dependencies = [
  "num-traits",
  "pxfm",
+]
+
+[[package]]
+name = "mpelyoffice"
+version = "0.1.9"
+dependencies = [
+ "anyhow",
+ "directories",
+ "ely-engine",
+ "ely-gpui-component",
+ "ely-platform",
+ "ely-ui",
+ "embed-resource",
+ "gpui-pre",
+ "log",
+ "rfd",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "mpelyoffice-setup"
+version = "0.1.9"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

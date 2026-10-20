@@ -14,7 +14,8 @@ use gpui::{
 
 use super::Shell;
 use crate::commands::{
-    self, Export, New, Open, OpenElyAgent, OpenElyDoc, OpenElyMail, OpenElyMark, OpenElyPdf,
+    self, Export, New, Open, OpenElyAgent, OpenElyDoc, OpenElyMail, OpenElyMark, OpenElyOffice,
+    OpenElyPdf,
     OpenElyShow, OpenElyTable, OpenElyTree, Print, Save, SaveAs, ToggleCommandPalette,
 };
 
@@ -295,6 +296,7 @@ impl Render for Root {
             .on_action(cx.listener(|this, _: &OpenElyTree, _, cx| this.switch(AppId::Tree, cx)))
             .on_action(cx.listener(|this, _: &OpenElyMark, _, cx| this.switch(AppId::Mark, cx)))
             .on_action(cx.listener(|this, _: &OpenElyAgent, _, cx| this.switch(AppId::Agent, cx)))
+            .on_action(cx.listener(|this, _: &OpenElyOffice, _, cx| this.switch(AppId::Office, cx)))
             .on_action(cx.listener(|this, _: &ToggleCommandPalette, window, cx| {
                 if this.palette {
                     window.on_next_frame(|window, cx| {

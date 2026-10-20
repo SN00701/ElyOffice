@@ -8,6 +8,7 @@ mod mail;
 mod mark;
 mod mark_menus;
 mod motion;
+mod mpelyoffice;
 mod office;
 mod output;
 mod pdf;
@@ -175,6 +176,7 @@ fn catalogs() -> (Catalog, Catalog) {
         .chain(output::EN)
         .chain(show::EN)
         .chain(motion::EN)
+   .chain(mpelyoffice::EN)
         .chain(play::EN)
         .chain(pdf::EN)
         .chain(secure::EN)
@@ -200,6 +202,7 @@ fn catalogs() -> (Catalog, Catalog) {
         .chain(output::ZH_CN)
         .chain(show::ZH_CN)
         .chain(motion::ZH_CN)
+   .chain(mpelyoffice::ZH_CN)
         .chain(play::ZH_CN)
         .chain(pdf::ZH_CN)
         .chain(secure::ZH_CN)

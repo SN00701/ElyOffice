@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# Builds the pinned LibreOffice with Ely's LOK patches on Windows (Cygwin).
+#
+# Usage: scripts/build-libreoffice-win.sh
+# Run it from Cygwin bash, with the JDK on PATH:
+#   PATH="/cygdrive/c/Program Files/Microsoft/jdk-17.0.19.10-hotspot/bin:$PATH" \
+#     scripts/build-libreoffice-win.sh
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+src=$root/engines/lo-src
+pin=8221e31b3ac356a1623c672912a3d2b492f7e3d1
+jobs=${ELY_BUILD_JOBS:-$(nproc)}
+
+# Where the build happens: no spaces, plenty of room.
+if [ -z "${ELY_LO_ROOT:-}" ]; then
+  export ELY_LO_ROOT=/cygdrive/f/mpely-lo
+fi
+mkdir -p "$ELY_LO_ROOT"
+
+# The files Ely's patches touch.  The tree is a partial clone, so those blobs
+# are not here yet; checking them out fetches them in one request instead of
+# one request per file, which is the difference between minutes and hours.
+patched=$(cd "$root" && sed -n 's|^+++ b/||p' patches/libreoffice/*.patch | sort -u)
+patched_dirs=$(printf '%s\n' "$patched" | xargs -n1 dirname | sort -u)
+
+# The sources live outside the repository so the tree stays small.
+if [ ! -d "$src/.git" ]; then
+  mkdir -p "$src"
+  git -C "$src" init -q
+  git -C "$src" config core.autocrlf false
+  git -C "$src" config core.eol lf
+  git -C "$src" remote add origin https://github.com/LibreOffice/core.git
+  git -C "$src" sparse-checkout init --no-cone
+  git -C "$src" sparse-checkout set \
+    include/LibreOfficeKit libreofficekit desktop/source/lib desktop/inc \
+    officecfg/registry/data/org/openoffice/Office/UI
+  git -C "$src" fetch -q --depth 1 --filter=blob:none origin "$pin"
+  git -C "$src" checkout -q FETCH_HEAD
+fi
+[ "$(git -C "$src" rev-parse HEAD)" = "$pin" ] || {
+  echo "build-libreoffice-win: $src is not at $pin" >&2
+  exit 1
+}
+
+# One request for every file the patches need.
+if [ -n "$patched" ]; then
+  git -C "$src" sparse-checkout set --no-cone \
+    include/LibreOfficeKit libreofficekit desktop/source/lib desktop/inc \
+    officecfg/registry/data/org/openoffice/Office/UI $patched
+  echo "build-libreoffice-win: fetching the patched files"
+  git -C "$src" read-tree -mu HEAD
+fi
+
+"$root/scripts/apply-lo-patches.sh" "$src"
+
+options=(
+  --enable-bogus-pkg-config
+  --enable-mergelibs
+  --enable-release-build
+  --without-java
+  --without-junit
+  --without-help
+  --disable-odk
+  --disable-online-update
+  --disable-extension-integration
+  --disable-scripting-beanshell
+  --disable-scripting-javascript
+  --disable-firebird-sdbc
+  --disable-postgresql-sdbc
+  --disable-ext-nlpsolver
+  --disable-ext-wiki-publisher
+  --disable-report-builder
+  --disable-sdremote
+  --disable-sdremote-bluetooth
+  --disable-poppler
+  --disable-lotuswordpro
+  --disable-gpgmepp
+  --disable-cups
+  --disable-evolution2
+  --with-galleries=no
+  --with-lang=
+  --with-theme=colibre
+  --with-fonts
+  --disable-python
+  --disable-coinmp
+  --disable-lpsolve
+  --without-doxygen
+  --with-myspell-dicts
+)
+
+# Unix-only switches do not apply here.
+kept=()
+for option in "${options[@]}"; do
+  case $option in
+    --enable-bogus-pkg-config | --disable-cups | --disable-evolution2 | --disable-python) ;;
+    *) kept+=("$option") ;;
+  esac
+done
+options=("${kept[@]}" --disable-ccache --disable-cli --without-dotnet)
+
+# The Visual Studio that is here. 2022 is v143; 2026 is what ships now.
+vs=${ELY_VS_VERSION:-2022}
+if [ ! -d "/cygdrive/d/Program Files/Microsoft Visual Studio/18/Community" ]; then
+  vs=2022
+fi
+options+=(--with-visual-studio="$vs")
+
+# Cygwin's make, never Git Bash's; MSYSTEM misleads the build.
+unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
+export PATH=/opt/lo/bin:$PATH
+
+cd "$src"
+if [ ! -f config_host.mk ] || ! printf '%s\n' "${options[@]}" | cmp -s - autogen.lastrun; then
+  ./autogen.sh "${options[@]}"
+fi
+make -j"$jobs"
+
+# Only the English dictionary; each one slows the first start.
+app=$src/instdir/share
+keep=(dict-en)
+extensions=$app/extensions
+for dict in "$extensions"/dict-*; do
+  name=$(basename "$dict")
+  case " ${keep[*]} " in
+    *" $name "*) ;;
+    *) rm -rf "$dict" ;;
+  esac
+done
+
+# Lightproof is Python: inert without it, a hang on Windows.
+en=$extensions/dict-en
+if [ -d "$en" ]; then
+  rm -f "$en/Lightproof.py" "$en/Lightproof.components" "$en/Linguistic.xcu"
+  rm -rf "$en/pythonpath" "$en/dialog"
+fi
+
+# Ely's kernel defaults.
+cp "$root/packaging/libreoffice/ely.xcd" "$app/registry/"
+
+echo "build-libreoffice-win: done"
+echo "  kernel: $app"
+ls -1 "$app" | head -20

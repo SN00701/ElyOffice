@@ -191,6 +191,52 @@ cargo build -p ely-pdf-engine --bins  ElyPDF 的 worker（链接 engines/mupdf-b
 cargo run -p ely-doc          启动一个应用（ElyDoc 先 cargo build -p ely-lok --bins，LOK 取 ELY_LOK_DIR 或 engines/ 下的构建）；ELY_LOG 设日志级别；ELY_SMOKE=1 开窗口、画一帧即退出，ELY_SMOKE=hold 开着不抢焦点；ELY_NO_DIALOG=1 启动失败不弹对话框
 ```
 
+## MPelyoffice（Windows 统一外壳）
+
+本 fork 新增的产品：一个安装包、一个启动器、一个窗口，混排六类文档。需求、竞品对标、
+架构决策与验收基线在 `docs/mp/`（00–09）；对抗式审查报告在 `docs/mp/08-对抗式审查报告.md`。
+
+| 层 | 内容 |
+| --- | --- |
+| 外壳 | `apps/mpelyoffice`：功能区（`shell::Toolbar` + `ToolbarGroup`）、混排标签栏（`navigation::EditorTabs`）、开始页、状态栏、自建菜单（只列已实现的命令） |
+| 引擎 | `crates/ely-engine`：`EngineDyn`（对象安全）、`Registry`（扩展名 → 引擎 + 冲突检测）、`CommandSpec`、`encoding`（UTF-8/UTF-8+BOM/UTF-16LE/GB18030 往返）、`TextEngine`（文本与 Markdown）、`contract`（引擎契约测试） |
+| 文档 | 标签内的文档视图由引擎给出（`AnyView`）；尚无引擎的格式先占位并提供"用模块应用打开"（`apps/mpelyoffice/src/placeholder.rs`） |
+| 文件 | 写前比对指纹以免覆盖外部修改，临时文件唯一命名；外部修改与未保存关闭都有守卫 |
+| Windows | 单实例复用 `ely_platform::instance`（文件锁 + `instance::Door`），文件交接经 `ely_ui::on_open`；关联注册 `packaging/windows/register-types.ps1`；安装器 `apps/mpelyoffice-setup`（per-user，免管理员） |
+
+脚本与验收：
+
+```text
+packaging/windows/register-types.ps1    注册/注销文件类型（绝不夺默认）
+packaging/windows/stage.ps1             组装配荷（只收构建产物，不收源码）
+apps/mpelyoffice-setup                  per-user 安装器
+tests/scripts/mp-association.ps1        关联验收（默认未被夺、卸载洁净）
+tests/scripts/mp-single-instance.ps1    单实例交接验收
+tests/scripts/mp-install.ps1            安装与卸载验收
+scripts/build-libreoffice-win.sh        Windows（Cygwin）构建带 LOK 补丁的 LibreOffice
+scripts/build-lo-win-run.sh             以干净环境跑上面那个
+packaging/icons/mpelyoffice.py          写出 assets/icons/mpelyoffice.ico
+```
+
+规则（本项目新增，叠加在上面各条之上）：
+
+1. **许可红线**：分发物只允许 MIT / BSD-2/3 / Apache-2.0 / MPL-2.0。**MuPDF（AGPL）与 `pdfium-rs`（GPL-2.0）不得进入分发包**；PDF 内核改用 PDFium（BSD-3）并自写 FFI（ADR-002）。
+2. **字体不再分发**：LO 构建去掉 `--with-fonts`，缺字体走回退并提示。
+3. **绝不夺取文件默认关联**：只写 `OpenWithProgids` / `RegisteredApplications`；不写 `UserChoice`；卸载不删 `HKCR\.<ext>` 的默认值。
+4. **文档归用户**：卸载只动程序目录与本应用的数据目录，不碰用户文档。
+5. **数据完整性优先**：原子写（临时文件 + 替换）、外部修改不覆盖、BOM 与编码保真、关闭与关闭标签前询问未保存。
+6. **诚实**：未实现的能力在状态栏与支持矩阵里写明，不做假动作。
+
+命令：
+
+```text
+cargo build -p mpelyoffice          统一外壳
+cargo test -p mpelyoffice           外壳与文件读写的单测
+cargo run -p mpelyoffice -- 文件    打开一个文件
+scripts/build-libreoffice-win.sh    Windows（Cygwin）上构建带 LOK 补丁的 LibreOffice
+packaging/icons/mpelyoffice.py      写出 assets/icons/mpelyoffice.ico
+```
+
 ## 决策
 
 - 2026-10-01：上游版本以 `scripts/fetch-references.sh` 为准。LibreOffice 26.2.6（8221e31）、MuPDF 1.28.5（8ad45e9）、gpui 为 `gpui-pre` =0.3.8 与 `gpui-pre-platform` =0.3.8（crates.io，2026-10-07 起，随组件库 K01）、组件库 d5ecc5a（2026-10-11 起）。
