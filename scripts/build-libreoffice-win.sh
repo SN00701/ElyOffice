@@ -116,6 +116,47 @@ if [ -d "/cygdrive/d/Program Files/Microsoft Visual Studio/18/Community" ]; then
 fi
 options+=(--with-visual-studio="$vs")
 
+# The compiler needs the environment Visual Studio sets up: the headers
+# and the libraries of the tool set and of the Windows SDK.  Take what
+# Visual Studio's own script leaves behind, but take the tool set that
+# has the compiler -- a newer one may hold only its auxiliary files.
+if [ -z "${MSVC_ENV_LOADED:-}" ]; then
+  vs_tools=/cygdrive/f/VS18/VC/Tools/MSVC
+  for toolset in `ls $vs_tools 2>/dev/null`; do
+    if [ -f "$vs_tools/$toolset/bin/HostX64/x64/cl.exe" ]; then
+      vs_toolset=$toolset
+      break
+    fi
+  done
+  envfile=$ELY_LO_ROOT/msvc-env.txt
+  MSYS2_ARG_CONV_EXCL='*' cmd.exe /c "call \"D:\Program Files\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat\" -arch=x64 -host_arch=x64 -vcvars_ver=$vs_toolset -no_logo && set" > "$envfile" 2>/dev/null || true
+  if [ -s "$envfile" ]; then
+    while IFS= read -r line; do
+      value=${line#*=}
+      value=${value%$'\r'}
+      case "$line" in
+        PATH=* | Path=*) continue ;;
+        [A-Za-z_]*=*)
+          key=${line%%=*}
+          export "$key=$value"
+          ;;
+      esac
+    done < "$envfile"
+    # The PATH from Visual Studio is in the Windows form; the shell wants
+    # its own.
+    for dir in "$VCToolsInstallDir" "$WindowsSdkVerBinPath"; do
+      case "$dir" in
+        [A-Z]:*)
+          unix=`cygpath -u "$dir" 2>/dev/null` && PATH="$PATH:$unix"
+          ;;
+      esac
+    done
+    export PATH
+    export MSVC_ENV_LOADED=1
+    echo "build-libreoffice-win: the compiler environment is set (tool set $vs_toolset)"
+  fi
+fi
+
 # Visual Studio sits in a folder whose name has a space, and LibreOffice's
 # configure cannot use such a path (it would need the short names, which this
 # machine has turned off).  A junction with a short name of its own solves
