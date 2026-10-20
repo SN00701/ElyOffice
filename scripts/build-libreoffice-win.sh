@@ -108,10 +108,11 @@ for option in "${options[@]}"; do
 done
 options=("${kept[@]}" --disable-ccache --disable-cli --without-dotnet)
 
-# The Visual Studio that is here. 2022 is v143; 2026 is what ships now.
+# The Visual Studio that is here.  LibreOffice knows 2022 and 2026; this
+# machine has the 2026 one (version 18, tool set v145).
 vs=${ELY_VS_VERSION:-2022}
-if [ ! -d "/cygdrive/d/Program Files/Microsoft Visual Studio/18/Community" ]; then
-  vs=2022
+if [ -d "/cygdrive/d/Program Files/Microsoft Visual Studio/18/Community" ]; then
+  vs=${ELY_VS_VERSION:-2026}
 fi
 options+=(--with-visual-studio="$vs")
 
