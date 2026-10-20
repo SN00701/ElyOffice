@@ -141,6 +141,10 @@ BAT
       value=${line#*=}
       value=${value%$'\r'}
       case "$key" in
+        [A-Za-z_]*) ;;
+        *) continue ;;
+      esac
+      case "$key" in
         *[!A-Za-z0-9_]*) continue ;;
       esac
       case "$key" in
