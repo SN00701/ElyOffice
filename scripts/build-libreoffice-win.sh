@@ -117,9 +117,9 @@ fi
 options+=(--with-visual-studio="$vs")
 
 # The compiler needs the environment Visual Studio sets up: the headers
-# and the libraries of the tool set and of the Windows SDK.  Take what
-# Visual Studio's own script leaves behind, but take the tool set that
-# has the compiler -- a newer one may hold only its auxiliary files.
+# and the libraries of the tool set and of the Windows SDK.  A batch file
+# of our own asks Visual Studio for it, because a command line with the
+# path of the installer in it is full of quotes that never survive.
 if [ -z "${MSVC_ENV_LOADED:-}" ]; then
   vs_tools=/cygdrive/f/VS18/VC/Tools/MSVC
   for toolset in `ls $vs_tools 2>/dev/null`; do
@@ -128,29 +128,29 @@ if [ -z "${MSVC_ENV_LOADED:-}" ]; then
       break
     fi
   done
+  batch=$ELY_LO_ROOT/vsenv.bat
+  cat > "$batch" <<BAT
+@call "D:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\Tools\\VsDevCmd.bat" -arch=x64 -host_arch=x64 -vcvars_ver=$vs_toolset -no_logo
+@set
+BAT
   envfile=$ELY_LO_ROOT/msvc-env.txt
-  MSYS2_ARG_CONV_EXCL='*' cmd.exe /c "call \"D:\Program Files\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat\" -arch=x64 -host_arch=x64 -vcvars_ver=$vs_toolset -no_logo && set" > "$envfile" 2>/dev/null || true
+  cmd.exe /c "`cygpath -w "$batch"`" > "$envfile" 2>/dev/null || true
   if [ -s "$envfile" ]; then
     while IFS= read -r line; do
+      key=${line%%=*}
       value=${line#*=}
       value=${value%$'\r'}
-      case "$line" in
-        PATH=* | Path=*) continue ;;
-        [A-Za-z_]*=*)
-          key=${line%%=*}
-          export "$key=$value"
-          ;;
+      case "$key" in
+        *[!A-Za-z0-9_]*) continue ;;
       esac
+      case "$key" in
+        PATH | Path) continue ;;
+      esac
+      export "$key=$value"
     done < "$envfile"
-    # The PATH from Visual Studio is in the Windows form; the shell wants
-    # its own.
-    for dir in "$VCToolsInstallDir" "$WindowsSdkVerBinPath"; do
-      case "$dir" in
-        [A-Z]:*)
-          unix=`cygpath -u "$dir" 2>/dev/null` && PATH="$PATH:$unix"
-          ;;
-      esac
-    done
+    tools=${VCToolsInstallDir%/}
+    PATH="$PATH:$(cygpath -u "$tools")/bin/HostX64/x64"
+    PATH="$PATH:$(cygpath -u "$WindowsSdkVerBinPath")"
     export PATH
     export MSVC_ENV_LOADED=1
     echo "build-libreoffice-win: the compiler environment is set (tool set $vs_toolset)"
