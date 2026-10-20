@@ -2038,8 +2038,10 @@ dependencies = [
  "ely-platform",
  "encoding_rs",
  "gpui-pre",
+ "image",
  "log",
  "serde",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

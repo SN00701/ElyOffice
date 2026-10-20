@@ -8,14 +8,15 @@
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-src=$root/engines/lo-src
-pin=8221e31b3ac356a1623c672912a3d2b492f7e3d1
-jobs=${ELY_BUILD_JOBS:-$(nproc)}
-
-# Where the build happens: no spaces, plenty of room.
+# The source lives outside the repository, and outside any path with a space:
+# LibreOffice's autogen.sh refuses a source path that has one.
 if [ -z "${ELY_LO_ROOT:-}" ]; then
   export ELY_LO_ROOT=/cygdrive/f/mpely-lo
 fi
+src=$ELY_LO_ROOT/src
+pin=8221e31b3ac356a1623c672912a3d2b492f7e3d1
+jobs=${ELY_BUILD_JOBS:-$(nproc)}
+
 mkdir -p "$ELY_LO_ROOT"
 
 # The files Ely's patches touch.  The tree is a partial clone, so those blobs
@@ -43,13 +44,21 @@ fi
   exit 1
 }
 
-# One request for every file the patches need.
+# One request for every file the patches need.  The root's own files come
+# along too: autogen.sh, configure.ac, Makefile.in and the macros in m4/ are
+# what the build starts from.
 if [ -n "$patched" ]; then
   git -C "$src" sparse-checkout set --no-cone \
+    '/*' '!/*/' m4/ \
     include/LibreOfficeKit libreofficekit desktop/source/lib desktop/inc \
     officecfg/registry/data/org/openoffice/Office/UI $patched
   echo "build-libreoffice-win: fetching the patched files"
   git -C "$src" read-tree -mu HEAD
+fi
+
+if [ ! -f "$src/autogen.sh" ]; then
+  echo "build-libreoffice-win: the tree has no autogen.sh" >&2
+  exit 1
 fi
 
 "$root/scripts/apply-lo-patches.sh" "$src"

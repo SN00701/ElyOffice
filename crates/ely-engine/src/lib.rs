@@ -5,6 +5,10 @@ pub mod contract;
 mod contract_tests;
 pub mod encoding;
 pub mod engine;
+pub mod pdf;
+#[cfg(test)]
+mod pdf_tests;
+pub mod pdfium;
 pub mod registry;
 pub mod text;
 
@@ -14,8 +18,16 @@ use gpui::{App, AnyView};
 
 pub use encoding::{Encoding, Fingerprint};
 pub use engine::{CommandSpec, DocId, EngineKind, Opened, Source};
+pub use pdf::PdfEngine;
 pub use registry::Registry;
 pub use text::TextEngine;
+
+/// The folder the engines put what they draw in.
+pub fn work_dir(name: &str) -> PathBuf {
+    let base = ely_platform::data_dir(ely_platform::AppId::Office)
+        .unwrap_or_else(|_| std::env::temp_dir().join("MPelyoffice"));
+    base.join("work").join(name)
+}
 
 /// What one engine can do with a document.
 ///

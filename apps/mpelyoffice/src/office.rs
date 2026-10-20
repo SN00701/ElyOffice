@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use ely_engine::{DocId, EngineDyn, EngineKind, Registry, Source, TextEngine};
+use ely_engine::{DocId, EngineDyn, EngineKind, PdfEngine, Registry, Source, TextEngine};
 use ely_gpui_component::{
     buttons::Button,
     navigation::{EditorTab, EditorTabs},
@@ -114,6 +114,7 @@ impl Office {
         let mut engines: HashMap<&'static str, Box<dyn EngineDyn>> = HashMap::new();
         engines.insert("text", Box::new(TextEngine::text()));
         engines.insert("markdown", Box::new(TextEngine::markdown()));
+        engines.insert("pdf", Box::new(PdfEngine::new()));
         Self {
             focus: cx.focus_handle(),
             registry: Registry::new(),

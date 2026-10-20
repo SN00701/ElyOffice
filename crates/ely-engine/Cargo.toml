@@ -12,8 +12,12 @@ ely-gpui-component.workspace = true
 ely-platform.workspace = true
 encoding_rs.workspace = true
 gpui.workspace = true
+image.workspace = true
 log.workspace = true
 serde.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
 
 [lints]
 workspace = true
