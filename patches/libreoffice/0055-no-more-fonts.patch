@@ -1,4 +1,4 @@
-MPelyoffice does not ship fonts (ADR-003): the machine that runs the kernel
+MPelyoffice does not ship fonts: the machine that runs the kernel
 has the fonts, and the package stays small.  The module that fetches the Noto,
 DejaVu and Liberation families is therefore empty, so the build neither
 downloads nor installs them.
