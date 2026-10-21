@@ -1,0 +1,49 @@
+The packages that are built by meson are given the compiler by a file.
+Meson is a program of Windows, and it cannot run a compiler whose path is
+one of Cygwin's, so the path is given the way Windows writes it.
+
+diff --git a/external/cairo/ExternalProject_cairo.mk b/external/cairo/ExternalProject_cairo.mk
+index 681544068..c56f97ac5 100644
+--- a/external/cairo/ExternalProject_cairo.mk
++++ b/external/cairo/ExternalProject_cairo.mk
+@@ -28,8 +28,8 @@ $(eval $(call gb_ExternalProject_use_externals,cairo,\
+ # so we're going to have to generate one on-the-fly.
+ # mungle variables into python list format
+ python_listify = '$(subst $(WHITESPACE),'$(COMMA)',$(strip $(1)))'
+-cross_c = $(call python_listify,$(gb_CC))
+-cross_cxx = $(call python_listify,$(gb_CXX))
++cross_c = $(call python_listify,$(shell cygpath -m $(gb_CC)))
++cross_cxx = $(call python_listify,$(shell cygpath -m $(gb_CXX)))
+ cross_ld := $(call python_listify,$(subst -fuse-ld=,,$(USE_LD)))
+ 
+ define gb_cairo_cross_compile
+diff --git a/external/cairo/ExternalProject_pixman.mk b/external/cairo/ExternalProject_pixman.mk
+index c92599478..faa2c0651 100644
+--- a/external/cairo/ExternalProject_pixman.mk
++++ b/external/cairo/ExternalProject_pixman.mk
+@@ -21,8 +21,8 @@ $(eval $(call gb_ExternalProject_use_externals,pixman,\
+ # so we're going to have to generate one on-the-fly.
+ # mungle variables into python list format
+ python_listify = '$(subst $(WHITESPACE),'$(COMMA)',$(strip $(1)))'
+-cross_c = $(call python_listify,$(gb_CC))
+-cross_cxx = $(call python_listify,$(gb_CXX))
++cross_c = $(call python_listify,$(shell cygpath -m $(gb_CC)))
++cross_cxx = $(call python_listify,$(shell cygpath -m $(gb_CXX)))
+ cross_ld := $(call python_listify,$(subst -fuse-ld=,,$(USE_LD)))
+ 
+ define gb_pixman_cross_compile
+diff --git a/external/harfbuzz/ExternalProject_harfbuzz.mk b/external/harfbuzz/ExternalProject_harfbuzz.mk
+index 98ae5b93e..1a8418863 100644
+--- a/external/harfbuzz/ExternalProject_harfbuzz.mk
++++ b/external/harfbuzz/ExternalProject_harfbuzz.mk
+@@ -23,8 +23,8 @@ $(eval $(call gb_ExternalProject_use_externals,harfbuzz,\
+ # so we're going to have to generate one on-the-fly.
+ # mungle variables into python list format
+ python_listify = '$(subst $(WHITESPACE),'$(COMMA)',$(strip $(1)))'
+-cross_c = $(call python_listify,$(gb_CC))
+-cross_cxx = $(call python_listify,$(gb_CXX))
++cross_c = $(call python_listify,$(shell cygpath -m $(gb_CC)))
++cross_cxx = $(call python_listify,$(shell cygpath -m $(gb_CXX)))
+ cross_ld := $(call python_listify,$(subst -fuse-ld=,,$(USE_LD)))
+ 
+ define gb_harfbuzz_cross_compile
