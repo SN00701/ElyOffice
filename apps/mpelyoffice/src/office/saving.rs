@@ -59,11 +59,7 @@ impl Office {
         let (kind, name) = tab;
         // A new document has no name of its own yet; it gets the extension of
         // its kind, so the file says what it is.
-        let suggested = if Path::new(&name).extension().is_some() {
-            name
-        } else {
-            format!("{name}.{}", kind.default_extension)
-        };
+        let suggested = suggested_name(&name, kind);
         let label = kinds::label(kind, cx).to_string();
         cx.spawn(
             async move |this, cx| {
@@ -96,13 +92,7 @@ impl Office {
         // A name without an extension gets the one of the kind, so the file
         // says what it is.
         let kind = tab.kind;
-        let path = if path.extension().is_some() {
-            path
-        } else {
-            let mut name = path.clone();
-            name.set_extension(kind.default_extension);
-            name
-        };
+        let path = with_extension(&path, kind);
         let name = path
             .file_name()
             .map(|name| name.to_string_lossy().to_string())
