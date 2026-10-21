@@ -31,6 +31,9 @@ $started = Start-Process -FilePath $program -PassThru
 Start-Sleep -Seconds 6
 Assert-True (-not $started.HasExited) 'the installed program stays open'
 Stop-Process -Id $started.Id -Force -ErrorAction SilentlyContinue
+# The program holds its own file until it is gone; the uninstall waits for it.
+Wait-Process -Id $started.Id -Timeout 20 -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
 
 Write-Output 'uninstall'
 & $Setup /silent /uninstall /dir $Target | Out-Null

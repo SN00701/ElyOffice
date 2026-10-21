@@ -26,8 +26,13 @@ $licenses = Join-Path $TargetDir 'Licenses'
 New-Item -ItemType Directory -Path $licenses -Force | Out-Null
 
 # The program and the installer.
-$build = Join-Path $BuildDir "$Profile\$Target"
-if (-not (Test-Path $build)) { $build = Join-Path $BuildDir 'debug' }
+# The build may sit in the profile's own folder or in one named after the
+# target; the folder that has the program is the one.
+$build = $null
+foreach ($candidate in @((Join-Path $BuildDir "$Profile\$Target"), (Join-Path $BuildDir $Profile), (Join-Path $BuildDir 'debug'))) {
+    if (Test-Path (Join-Path $candidate 'mpelyoffice.exe')) { $build = $candidate; break }
+}
+if (-not $build) { throw 'stage: the program is not built' }
 Say "the build is at $build"
 foreach ($name in @('mpelyoffice.exe', 'mpelyoffice-setup.exe')) {
     $source = Join-Path $build $name
