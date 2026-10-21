@@ -233,7 +233,7 @@ fi
 unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
 export PATH=/opt/lo/bin:$PATH
 # The Rust of the machine, for the stand-in below.
-export PATH="$PATH:$HOME/.cargo/bin"
+export PATH="$PATH:$(cygpath -u "${USERPROFILE:-C:/Users/$USERNAME}")/.cargo/bin"
 
 # The build asks the packages it builds itself for their flags, and a
 # machine without them has no answer.  The stand-in answers for the ones the
