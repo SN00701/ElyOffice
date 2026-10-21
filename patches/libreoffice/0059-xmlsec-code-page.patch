@@ -1,0 +1,17 @@
+The headers of xmlsec have characters that the code page of this machine
+cannot show, and the compiler is told to treat that warning as an error.  The
+warning is left alone.
+
+diff --git a/external/xmlsec/ExternalProject_xmlsec.mk b/external/xmlsec/ExternalProject_xmlsec.mk
+index 06e737c3c..3f170e88c 100644
+--- a/external/xmlsec/ExternalProject_xmlsec.mk
++++ b/external/xmlsec/ExternalProject_xmlsec.mk
+@@ -35,7 +35,7 @@ $(call gb_ExternalProject_get_state_target,xmlsec,build) :
+ 		cscript /e:javascript configure.js crypto=mscng xslt=no iconv=no static=no \
+ 			lib=$(gb_UnpackedTarball_workdir)/libxml2/win32/bin.msvc \
+ 			$(if $(filter TRUE,$(ENABLE_DBGUTIL)),debug=yes cruntime=/MDd) \
+-			cflags="$(SOLARINC) -I$(WORKDIR)/UnpackedTarball/libxml2/include -I$(WORKDIR)/UnpackedTarball/icu/source/i18n -I$(WORKDIR)/UnpackedTarball/icu/source/common" \
++			cflags="$(SOLARINC) /wd4819 -I$(WORKDIR)/UnpackedTarball/libxml2/include -I$(WORKDIR)/UnpackedTarball/icu/source/i18n -I$(WORKDIR)/UnpackedTarball/icu/source/common" \
+ 		&& nmake \
+ 	,win32)
+ 	$(call gb_Trace_EndRange,xmlsec,EXTERNAL)
