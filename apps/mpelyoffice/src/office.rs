@@ -302,14 +302,16 @@ impl Office {
     }
 
     /// Whether the window may close; a document with changes stops it.
+    ///
+    /// A second request to close does not let the window through either:
+    /// only the buttons in the notice do, and they say what happens to the
+    /// changes.
     fn should_close(&mut self, cx: &mut Context<Self>) -> bool {
         if !self.tabs.iter().enumerate().any(|(index, _)| self.changed(index, cx)) {
             return true;
         }
-        if self.pending_close {
-            return true;
-        }
         self.pending_close = true;
+        self.notice = Some(ely_ui::i18n::text(cx, "mpelyoffice.close.window", &[]));
         cx.notify();
         false
     }
@@ -610,6 +612,21 @@ impl Office {
             .child(recent)
     }
 
+    /// The bar that says what the window just did.
+    fn notice_bar(&self, cx: &mut Context<Self>) -> Option<gpui::AnyElement> {
+        let notice = self.notice.clone()?;
+        Some(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .px_3()
+                .py_2()
+                .child(div().text_sm().child(notice))
+                .into_any_element(),
+        )
+    }
+
     /// The bar that asks what to do about unsaved changes.
     fn close_notice(&self, cx: &mut Context<Self>) -> Option<gpui::AnyElement> {
         let this = cx.entity();
@@ -759,11 +776,15 @@ impl Render for Office {
         let ribbon = self.ribbon(cx);
         let body = self.body(cx);
         let notice = self.close_notice(cx);
+        let message = self.notice_bar(cx);
         let mut shell = ely_ui::Shell::new("MPelyoffice", &self.focus)
             .tabs(tabs)
             .status(status)
             .child(ribbon)
             .child(body);
+        if let Some(message) = message {
+            shell = shell.child(message);
+        }
         if let Some(notice) = notice {
             shell = shell.child(notice);
         }

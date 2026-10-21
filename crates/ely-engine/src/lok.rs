@@ -79,7 +79,12 @@ impl EngineDyn for LokEngine {
         let url = ely_lok::file_url(&path);
         // The kernel loads, measures and reports its history.
         let (doc, laid, mark) = {
-            let mut worker = self.worker.lock().expect("the worker lock");
+            // A worker that died leaves its lock poisoned; that is an error
+            // to report, not a reason to bring the window down.
+            let mut worker = self
+                .worker
+                .lock()
+                .map_err(|_| anyhow::anyhow!("the document engine is not usable"))?;
             let doc = worker.unlock(&url, "")?;
             let laid = ely_lok::layout(&mut worker, &doc)?;
             let mark = worker.values(&doc, ".uno:Undo")?;
@@ -155,7 +160,10 @@ impl EngineDyn for LokEngine {
         };
         let format = document.format.clone();
         let url = ely_lok::file_url(path);
-        let mut worker = self.worker.lock().expect("the worker lock");
+        let mut worker = self
+            .worker
+            .lock()
+            .map_err(|_| anyhow::anyhow!("the document engine is not usable"))?;
         document.doc.save_owned(&mut worker, &url, &format)?;
         if let Some(document) = self.documents.get_mut(&id) {
             document.path = path.to_path_buf();

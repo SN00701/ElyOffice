@@ -135,6 +135,9 @@ fn install(options: &Options) -> anyhow::Result<()> {
 }
 
 /// Copies a folder, and remembers every file it wrote.
+///
+/// The names are relative to the folder the program goes into, so the
+/// uninstaller finds them again where they are.
 fn copy_tree(from: &Path, to: &Path, installed: &mut Vec<String>) -> anyhow::Result<()> {
     for entry in std::fs::read_dir(from)? {
         let entry = entry?;
@@ -148,8 +151,11 @@ fn copy_tree(from: &Path, to: &Path, installed: &mut Vec<String>) -> anyhow::Res
         let target = to.join(name.as_ref());
         if source.is_dir() {
             std::fs::create_dir_all(&target)?;
-            copy_tree(&source, &target, installed)?;
-            installed.push(name.to_string());
+            let mut deeper = Vec::new();
+            copy_tree(&source, &target, &mut deeper)?;
+            for path in deeper {
+                installed.push(format!("{name}/{path}"));
+            }
         } else {
             std::fs::copy(&source, &target)
                 .with_context(|| format!("copying {}", source.display()))?;
@@ -263,13 +269,33 @@ fn uninstall(options: &Options) -> anyhow::Result<()> {
     if manifest.exists() {
         let text = std::fs::read_to_string(&manifest)?;
         let files: Vec<String> = serde_json::from_str(&text)?;
-        for file in files.iter().rev() {
+        // The folders the files were in, deepest first, so they can go
+        // once they are empty.
+        let mut folders: Vec<PathBuf> = Vec::new();
+        for file in files.iter() {
             let path = dir.join(file);
             if path.is_dir() {
                 let _ = std::fs::remove_dir(&path);
             } else {
                 let _ = std::fs::remove_file(&path);
             }
+            if let Some(parent) = path.parent() {
+                // Every folder above the file, up to the program's own.
+                let mut folder = Some(parent.to_path_buf());
+                while let Some(current) = folder {
+                    if current == dir {
+                        break;
+                    }
+                    folders.push(current.clone());
+                    folder = current.parent().map(|parent| parent.to_path_buf());
+                }
+            }
+        }
+        folders.sort_by_key(|path| std::cmp::Reverse(path.components().count()));
+        folders.dedup();
+        for folder in folders {
+            // Only an empty folder goes; a folder of the user's own stays.
+            let _ = std::fs::remove_dir(&folder);
         }
     }
     let _ = std::fs::remove_file(&manifest);

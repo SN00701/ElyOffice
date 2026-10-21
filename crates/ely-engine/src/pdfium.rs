@@ -6,6 +6,7 @@
 //! build without it still starts and says what is missing.
 
 use std::ffi::c_void;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::path::{Path, PathBuf};
 
 use anyhow::bail;
@@ -23,6 +24,9 @@ pub type Page = *mut c_void;
 pub type Bitmap = *mut c_void;
 /// A page's text.
 pub type TextPage = *mut c_void;
+
+/// How many engines hold the kernel; the last one to leave stops it.
+static INSTANCES: AtomicUsize = AtomicUsize::new(0);
 
 /// The functions this project uses. Each is checked when the library is
 /// loaded, so a call may take it for granted.
@@ -152,9 +156,12 @@ impl Pdfium {
             symbol!("FPDFText_CountChars", text_count_chars);
             symbol!("FPDFText_GetText", text_get_text);
             symbol!("FPDFText_ClosePage", text_close_page);
-            call!(pdfium, init);
-            Ok(pdfium)
-        }
+            // The kernel is started once for the program, not once per
+            // engine: two engines would otherwise take each other down.
+            if INSTANCES.fetch_add(1, Ordering::SeqCst) == 0 {
+                call!(pdfium, init);
+            }
+            Ok(pdfium)        }
         #[cfg(not(windows))]
         {
             let _ = path;
@@ -208,6 +215,10 @@ impl Pdfium {
             return String::new();
         }
         let count = call!(self, text_count_chars, text_page).max(0) as usize;
+        if count > MAX_TEXT_CHARS {
+            call!(self, text_close_page, text_page);
+            return String::new();
+        }
         let mut wide = vec![0u16; count + 1];
         call!(self, text_get_text, text_page, 0, count as i32, wide.as_mut_ptr());
         call!(self, text_close_page, text_page);
@@ -216,6 +227,16 @@ impl Pdfium {
 
     /// Draws a page into a buffer of BGRA pixels.
     pub fn render(&self, page: Page, width: i32, height: i32) -> Option<Vec<u8>> {
+        if width <= 0 || height <= 0 {
+            return None;
+        }
+        // The size of the buffer, checked before it is asked for.
+        let length = (width as i64)
+            .checked_mul(height as i64)?
+            .checked_mul(4)?;
+        if length <= 0 || length > MAX_PIXELS {
+            return None;
+        }
         let bitmap = call!(self, bitmap_create, width, height, 0);
         if bitmap.is_null() {
             return None;
@@ -224,19 +245,29 @@ impl Pdfium {
         call!(self, bitmap_fill, bitmap, 0, 0, width, height, 0xFFFF_FFFF);
         call!(self, render_page, bitmap, page, 0, 0, width, height, 0, 0);
         let buffer = call!(self, bitmap_buffer, bitmap);
+        if buffer.is_null() {
+            call!(self, bitmap_destroy, bitmap);
+            return None;
+        }
         // SAFETY: the kernel gave a buffer of the size we asked for.
-        let bytes = unsafe {
-            std::slice::from_raw_parts(buffer as *const u8, (width * height * 4) as usize)
-        };
+        let bytes = unsafe { std::slice::from_raw_parts(buffer as *const u8, length as usize) };
         let mut pixels = bytes.to_vec();
         call!(self, bitmap_destroy, bitmap);
         Some(pixels)
     }
 }
 
+/// The most characters a page may hold.
+const MAX_TEXT_CHARS: usize = 8 * 1024 * 1024;
+
+/// The most pixels a page may take; a page is never that big.
+const MAX_PIXELS: i64 = 64 * 1024 * 1024;
+
 impl Drop for Pdfium {
     fn drop(&mut self) {
-        call!(self, destroy);
+        if INSTANCES.fetch_sub(1, Ordering::SeqCst) == 1 {
+            call!(self, destroy);
+        }
         #[cfg(windows)]
         unsafe {
             FreeLibrary(self.library);
