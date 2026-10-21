@@ -168,6 +168,15 @@ BAT
       case "$key" in
         PATH | Path) continue ;;
       esac
+      # The include list of the compiler is a list of paths separated by
+      # semicolons, and the build puts it into the commands it writes.  The
+      # paths of Visual Studio and of the Windows SDK have spaces and
+      # parentheses in them, so the shell that runs those commands falls over.
+      # The build has its own include flags (SOLARINC), and they name the
+      # same folders, so the list is not needed here.
+      case "$key" in
+        INCLUDE) continue ;;
+      esac
       export "$key=$value"
     done < "$envfile"
     tools=${VCToolsInstallDir%/}
