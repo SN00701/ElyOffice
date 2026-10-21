@@ -204,6 +204,20 @@ fi
 unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
 export PATH=/opt/lo/bin:$PATH
 
+# The externals that are built with MSBuild ask for the targets of the Visual
+# Studio that is installed, by the name of its version.  This installation has
+# the C++ targets of Visual Studio 2022 (the folder v170) and not those of
+# the newer one (v180), and the folder of the newer one cannot be written to
+# (it belongs to the installer).  The targets are told where to look, and the
+# toolset is the one that has the compiler, which the older targets know.
+if [ -n "${ELY_VS_ALIAS:-}" ]; then
+  targets="$ELY_VS_ALIAS/MSBuild/Microsoft/VC"
+  if [ ! -f "$targets/v180/Microsoft.Cpp.Default.props" ] && [ -f "$targets/v170/Microsoft.Cpp.Default.props" ]; then
+    export VCTargetsPath="$targets/v170\\"
+    echo "build-libreoffice-win: the C++ targets of Visual Studio 2022 are used"
+  fi
+fi
+
 cd "$src"
 if [ ! -f config_host.mk ] || ! printf '%s\n' "${options[@]}" | cmp -s - autogen.lastrun; then
   ./autogen.sh "${options[@]}"
@@ -225,7 +239,7 @@ if [ -f download.lst ]; then
   bash "$root/scripts/fetch-lo-tarballs.sh" "$src" "${ELY_LO_FETCH_JOBS:-6}" || true
 fi
 
-make -j"$jobs"
+make -j"$jobs" VCTOOLSET=v143
 
 # Only the English dictionary; each one slows the first start.
 app=$src/instdir/share
