@@ -44,14 +44,12 @@ fi
   exit 1
 }
 
-# One request for every file the patches need.  The root's own files come
-# along too: autogen.sh, configure.ac, Makefile.in and the macros in m4/ are
-# what the build starts from.
+# One request for every file the patches need, and the whole shape of the
+# tree: the build system reads files from every part of it.  The sources
+# themselves are fetched as the build asks for them.
 if [ -n "$patched" ]; then
-  git -C "$src" sparse-checkout set --no-cone \
-    '/*' '!/*/' m4/ \
-    include/LibreOfficeKit libreofficekit desktop/source/lib desktop/inc \
-    officecfg/registry/data/org/openoffice/Office/UI $patched
+  rootdirs=`git -C "$src" ls-tree --name-only HEAD | grep -v '\.md$' | tr '\n' ' '`
+  git -C "$src" sparse-checkout set --no-cone '/*' '!/*/' $rootdirs $patched
   echo "build-libreoffice-win: fetching the patched files"
   git -C "$src" read-tree -mu HEAD
 fi
