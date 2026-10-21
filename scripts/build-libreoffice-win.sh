@@ -233,6 +233,19 @@ fi
 unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
 export PATH=/opt/lo/bin:$PATH
 
+# The build asks the packages it builds itself for their flags, and a
+# machine without them has no answer.  The stand-in answers for the ones the
+# build has of its own; the folders and the libraries themselves are given
+# to the compiler by the build.
+if [ ! -x /opt/lo/bin/pkg-config ] && [ -f "$root/scripts/pkgconf-stub.rs" ]; then
+  if command -v rustc >/dev/null 2>&1; then
+    mkdir -p /opt/lo/bin
+    (cd "$root" && rustc -O -o "$(cygpath -w /opt/lo/bin)/pkgconf-2.4.3.exe" scripts/pkgconf-stub.rs) || true
+    cp /opt/lo/bin/pkgconf-2.4.3.exe /opt/lo/bin/pkg-config 2>/dev/null || true
+    echo "build-libreoffice-win: the stand-in for pkg-config is made"
+  fi
+fi
+
 # The externals that are built with MSBuild ask for the targets of the Visual
 # Studio that is installed, by the name of its version.  This installation has
 # the C++ targets of Visual Studio 2022 (the folder v170) and not those of
