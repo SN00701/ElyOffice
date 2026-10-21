@@ -1,0 +1,26 @@
+The generator of the newer Visual Studio needs the C++ targets of that
+version, which the installation of that Visual Studio may not have, and the older
+targets are not the ones it looks for.  The generator that uses the compiler of
+the environment is used instead, and the folders of the compiler are given to it.
+
+diff --git a/external/curl/ExternalProject_curl.mk b/external/curl/ExternalProject_curl.mk
+index f31c671bb..e92d01fb5 100644
+--- a/external/curl/ExternalProject_curl.mk
++++ b/external/curl/ExternalProject_curl.mk
+@@ -74,13 +74,13 @@ $(call gb_ExternalProject_get_state_target,curl,build):
+ 
+ else ifeq ($(COM),MSC)
+ 
++$(call gb_ExternalProject_get_state_target,curl,build): export INCLUDE := $(gb_ExternalProject_INCLUDE)
++$(call gb_ExternalProject_get_state_target,curl,build): export LIB := $(ILIB)
+ $(call gb_ExternalProject_get_state_target,curl,build):
+ 	$(call gb_Trace_StartRange,curl,EXTERNAL)
+ 	$(call gb_ExternalProject_run,build,\
+ 		$(CMAKE) . \
+-			$(if $(filter 17.%,$(VCVER)),-G "Visual Studio 17 2022") \
+-			$(if $(filter 18.%,$(VCVER)),-G "Visual Studio 18 2026") \
+-			-A $(gb_MSBUILD_PLATFORM) \
++			-G "NMake Makefiles" \
+ 			-DBUILD_SHARED_LIBS=ON \
+ 			-DENABLE_IPV6=ON \
+ 			-DCURL_WINDOWS_SSPI=ON \
