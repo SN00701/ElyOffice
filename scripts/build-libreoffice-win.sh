@@ -209,6 +209,13 @@ if [ -f config_host.mk ]; then
   echo "build-libreoffice-win: the fonts are left out of the build"
 fi
 
+# The build fetches its tarballs one after another, and one connection on a
+# slow line is the bottleneck.  They are fetched here, several at a time, so
+# the build finds them in place.
+if [ -f download.lst ]; then
+  bash "$root/scripts/fetch-lo-tarballs.sh" "$src" "${ELY_LO_FETCH_JOBS:-6}" || true
+fi
+
 make -j"$jobs"
 
 # Only the English dictionary; each one slows the first start.
