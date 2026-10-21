@@ -238,20 +238,20 @@ echo "build-libreoffice-win: the path is $PATH"
 # machine without them has no answer.  The stand-in answers for the ones the
 # build has of its own; the folders and the libraries themselves are given
 # to the compiler by the build.
-if [ ! -x /opt/lo/bin/pkg-config ] && [ -f "$root/scripts/pkgconf-stub.rs" ]; then
+if [ ! -x /opt/lo/bin/pkg-config.exe ] && [ -f "$root/scripts/pkgconf-stub.rs" ]; then
   if command -v rustc >/dev/null 2>&1; then
     mkdir -p /opt/lo/bin
     (cd "$root" && rustc -O -o "$(cygpath -w /opt/lo/bin)/pkgconf-2.4.3.exe" scripts/pkgconf-stub.rs) || true
-    cp /opt/lo/bin/pkgconf-2.4.3.exe /opt/lo/bin/pkg-config 2>/dev/null || true
+    cp /opt/lo/bin/pkgconf-2.4.3.exe /opt/lo/bin/pkg-config.exe 2>/dev/null || true
     echo "build-libreoffice-win: the stand-in for pkg-config is made"
   fi
 fi
 # The packages ask for their flags by name; the stand-in answers for the ones
 # the build has of its own.  The name in the build's own settings is empty,
 # and an empty name keeps the packages from looking for one at all.
-export PKG_CONFIG=/opt/lo/bin/pkg-config
+export PKG_CONFIG=/opt/lo/bin/pkg-config.exe
 if [ -f config_host.mk ]; then
-  sed -i "s|^export PKG_CONFIG=.*|export PKG_CONFIG=$(cygpath -m /opt/lo/bin/pkg-config)|" config_host.mk
+  sed -i "s|^export PKG_CONFIG=.*|export PKG_CONFIG=$(cygpath -m /opt/lo/bin/pkg-config.exe)|" config_host.mk
 fi
 
 # The externals that are built with MSBuild ask for the targets of the Visual
