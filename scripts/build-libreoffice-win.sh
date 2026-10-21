@@ -154,6 +154,7 @@ BAT
   envfile=$ELY_LO_ROOT/msvc-env.txt
   cmd.exe /c "`cygpath -w "$batch"`" > "$envfile" 2>/dev/null || true
   if [ -s "$envfile" ]; then
+    imported=
     while IFS= read -r line; do
       key=${line%%=*}
       value=${line#*=}
@@ -177,6 +178,14 @@ BAT
       case "$key" in
         INCLUDE) continue ;;
       esac
+      # A name that differs only in its case is the same name to Windows and
+      # to the build tools, and two of them in the environment make them
+      # fall over ("an item with the same key has already been added").
+      lower=$(printf '%s' "$key" | tr 'A-Z' 'a-z')
+      case " $imported " in
+        *" $lower "*) continue ;;
+      esac
+      imported="$imported $lower"
       export "$key=$value"
     done < "$envfile"
     tools=${VCToolsInstallDir%/}
