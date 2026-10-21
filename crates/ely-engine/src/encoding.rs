@@ -134,6 +134,9 @@ pub fn store(path: &Path, text: &str, encoding: Encoding) -> io::Result<()> {
             bytes.into_owned()
         }
     };
+    // A link is a name for another file; the text goes to the file it names,
+    // and the link stays a link.
+    let path = &target_of(path);
     let temporary = temporary_for(path);
     std::fs::write(&temporary, &bytes)?;
     match std::fs::rename(&temporary, path) {
@@ -143,6 +146,26 @@ pub fn store(path: &Path, text: &str, encoding: Encoding) -> io::Result<()> {
             Err(error)
         }
     }
+}
+
+/// The file a path really is: a link points at the file it names.
+fn target_of(path: &Path) -> std::path::PathBuf {
+    let mut target = path.to_path_buf();
+    // A chain of links is rare, but it is followed to its end.
+    for _ in 0..8 {
+        let Ok(link) = std::fs::read_link(&target) else {
+            break;
+        };
+        target = if link.is_absolute() {
+            link
+        } else {
+            match target.parent() {
+                Some(parent) => parent.join(link),
+                None => link,
+            }
+        };
+    }
+    target
 }
 
 /// A temporary name of its own, beside the target and hidden from the folder.
@@ -241,5 +264,36 @@ mod tests {
             .count();
         assert_eq!(left, 0, "no temporary file is left behind");
         std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn a_link_stays_a_link_and_the_file_it_names_is_written() {
+        let folder = std::env::temp_dir().join("mpelyoffice-link-test");
+        std::fs::create_dir_all(&folder).ok();
+        let target = folder.join("real.txt");
+        let link = folder.join("link.txt");
+        std::fs::remove_file(&target).ok();
+        std::fs::remove_file(&link).ok();
+        std::fs::write(&target, "old").ok();
+        if std::os::windows::fs::symlink_file(&target, &link).is_err() {
+            // The machine does not allow links; the behaviour is the same on
+            // the ones that do.
+            println!("skip: this machine does not allow links");
+            return;
+        }
+        store(&link, "new", Encoding::Utf8).expect("the text is written");
+        assert_eq!(
+            std::fs::read_to_string(&target).unwrap_or_default(),
+            "new",
+            "the file the link names has the new text"
+        );
+        assert!(
+            std::fs::symlink_metadata(&link)
+                .map(|meta| meta.file_type().is_symlink())
+                .unwrap_or(false),
+            "the link is still a link"
+        );
+        std::fs::remove_file(&link).ok();
+        std::fs::remove_file(&target).ok();
     }
 }
