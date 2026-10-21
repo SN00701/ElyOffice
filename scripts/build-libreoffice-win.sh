@@ -199,6 +199,16 @@ cd "$src"
 if [ ! -f config_host.mk ] || ! printf '%s\n' "${options[@]}" | cmp -s - autogen.lastrun; then
   ./autogen.sh "${options[@]}"
 fi
+
+# The fonts are not shipped, so the kernel neither fetches nor installs them
+# (ADR-003).  MORE_FONTS is what brings the Noto, DejaVu and Liberation
+# families into the build; without it, the download of those tarballs, which
+# takes hours on a slow line, is not started at all.
+if [ -f config_host.mk ]; then
+  sed -i 's/ MORE_FONTS / /' config_host.mk
+  echo "build-libreoffice-win: the fonts are left out of the build"
+fi
+
 make -j"$jobs"
 
 # Only the English dictionary; each one slows the first start.
