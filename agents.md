@@ -215,6 +215,7 @@ tests/scripts/mp-single-instance.ps1    单实例交接验收
 tests/scripts/mp-install.ps1            安装与卸载验收
 scripts/build-libreoffice-win.sh        Windows（Cygwin）构建带 LOK 补丁的 LibreOffice
 scripts/build-lo-win-run.sh             以干净环境跑上面那个
+scripts/fetch-lo-tarballs.sh            并行取 LO 的外部依赖（单连接太慢）
 packaging/icons/mpelyoffice.py          写出 assets/icons/mpelyoffice.ico
 ```
 
