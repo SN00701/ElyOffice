@@ -39,8 +39,6 @@ pub struct Office {
     home: Option<Entity<Home>>,
     /// Keeps the start page's requests listened to.
     home_watch: Option<Subscription>,
-    /// Whether the sheet that asks what to make is open.
-    newing: bool,
     /// The worker of the document engine, when it started.
     lok: Option<std::sync::Arc<std::sync::Mutex<ely_lok::Worker>>>,
     /// Why the document engine did not start.
@@ -158,8 +156,7 @@ impl Office {
             registry: Registry::new(),
             home: None,
         home_watch: None,
-            newing: false,
-            engines,
+                engines,
             lok,
             lok_error,
             tabs: Vec::new(),
@@ -296,7 +293,7 @@ impl Office {
     fn drop_tab(&mut self, index: usize, cx: &mut Context<Self>) {
         if let Some(doc) = self.tabs[index].doc {
             if let Some(engine) = self.engine(self.tabs[index].kind) {
-                engine.close(doc);
+                engine.close(doc, cx);
             }
         }
         self.tabs.remove(index);
@@ -501,7 +498,7 @@ impl Office {
                     .and_then(|document| {
                         self.engines
                             .get(tab.kind.id)
-                            .map(|engine| engine.is_loading(document))
+                            .map(|engine| engine.is_loading(document, cx))
                     })
                     .unwrap_or(false);
                 if loading {
@@ -652,7 +649,7 @@ impl Office {
     }
 
     /// The bar that says what the window just did.
-    fn notice_bar(&self, cx: &mut Context<Self>) -> Option<gpui::AnyElement> {
+    fn notice_bar(&self, _cx: &mut Context<Self>) -> Option<gpui::AnyElement> {
         let notice = self.notice.clone()?;
         Some(
             div()

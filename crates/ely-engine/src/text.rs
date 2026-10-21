@@ -139,7 +139,7 @@ impl EngineDyn for TextEngine {
         }
     }
 
-    fn write(&mut self, id: DocId, path: &Path, cx: &App) -> anyhow::Result<()> {
+    fn write(&mut self, id: DocId, path: &Path, cx: &mut App) -> anyhow::Result<()> {
         let Some(doc) = self.documents.get_mut(&id) else {
             anyhow::bail!("the document is not open");
         };
@@ -160,7 +160,7 @@ impl EngineDyn for TextEngine {
         self.documents.get(&id).map(|doc| doc.encoding)
     }
 
-    fn close(&mut self, id: DocId) {
+    fn close(&mut self, id: DocId, _cx: &App) {
         self.documents.remove(&id);
     }
 }

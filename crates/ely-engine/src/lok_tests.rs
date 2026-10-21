@@ -52,6 +52,6 @@ fn the_document_engine_opens_a_document(cx: &mut gpui::TestAppContext) {
             engine.path(opened.id).is_some(),
             "the document knows its file"
         );
-        engine.close(opened.id);
+        engine.close(opened.id, cx);
     });
 }

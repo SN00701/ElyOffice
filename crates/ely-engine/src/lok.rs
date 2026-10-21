@@ -30,14 +30,11 @@ pub struct LokEngine {
 
 /// What the engine knows about an open document.
 struct LokDoc {
-    /// The document, once the kernel has it.
-    doc: Option<Doc>,
     path: PathBuf,
     /// The format it is written back in: the extension it came with.
     format: String,
-    /// The history mark of the last write.
-    mark: String,
-    /// The placeholder that will show the document.
+    /// The placeholder that will show the document; it holds what the
+    /// kernel brought once the load is through.
     placeholder: Entity<Loading>,
 }
 
@@ -55,6 +52,10 @@ pub struct Loading {
     inner: Option<Entity<LokView>>,
     /// Why the document did not open, when it did not.
     reason: Option<SharedString>,
+    /// The document in the kernel, once the kernel has it.
+    doc: Option<Doc>,
+    /// The kernel's history mark as it was when the document was opened.
+    mark: String,
 }
 
 impl Render for Loading {
@@ -151,10 +152,12 @@ impl EngineDyn for LokEngine {
 
         // The window shows a placeholder right away.
         let shown = name.clone();
-        let placeholder = cx.new(|cx| Loading {
+        let placeholder = cx.new(|_| Loading {
             name: shown.into(),
             inner: None,
             reason: None,
+            doc: None,
+            mark: String::new(),
         });
 
         // When the kernel is through, the placeholder shows the document.
@@ -167,6 +170,8 @@ impl EngineDyn for LokEngine {
                     let view = LokView::open(worker, found.doc.clone(), found.laid, app);
                     place.update(app, |loading, cx| {
                         loading.inner = Some(view);
+                        loading.doc = Some(found.doc);
+                        loading.mark = found.mark;
                         cx.notify();
                     });
                 }
@@ -186,10 +191,8 @@ impl EngineDyn for LokEngine {
         self.documents.insert(
             id,
             LokDoc {
-                doc: None,
                 path: path.clone(),
                 format,
-                mark: String::new(),
                 placeholder: placeholder.clone(),
             },
         );
@@ -206,18 +209,18 @@ impl EngineDyn for LokEngine {
         Vec::new()
     }
 
-    fn text(&self, id: DocId, _cx: &App) -> Option<String> {
-        let document = self.documents.get(&id)?;
-        let doc = document.doc.as_ref()?;
-        let mut worker = self.worker.lock().ok()?;
-        worker.values(doc, ".uno:Modified").ok()
+    fn text(&self, _id: DocId, _cx: &App) -> Option<String> {
+        // The kernel's text is not read out; the shell saves through the
+        // kernel, so it has no use for the text.
+        None
     }
 
-    fn modified(&self, id: DocId, _cx: &App) -> bool {
+    fn modified(&self, id: DocId, cx: &App) -> bool {
         let Some(document) = self.documents.get(&id) else {
             return false;
         };
-        let Some(doc) = document.doc.as_ref() else {
+        let loading = document.placeholder.read(cx);
+        let Some(doc) = loading.doc.as_ref() else {
             return false;
         };
         let Ok(mut worker) = self.worker.lock() else {
@@ -225,7 +228,7 @@ impl EngineDyn for LokEngine {
         };
         // The kernel's history mark moves when the document changes.
         match worker.values(doc, ".uno:Undo") {
-            Ok(mark) => mark != document.mark,
+            Ok(mark) => mark != loading.mark,
             Err(_) => false,
         }
     }
@@ -243,13 +246,16 @@ impl EngineDyn for LokEngine {
         }
     }
 
-    fn write(&mut self, id: DocId, path: &Path, _cx: &App) -> anyhow::Result<()> {
+    fn write(&mut self, id: DocId, path: &Path, cx: &mut App) -> anyhow::Result<()> {
         let Some(document) = self.documents.get(&id) else {
             bail!("the document is not open");
         };
-        let Some(doc) = document.doc.clone() else {
-            bail!("the document is still loading");
-        };
+        let doc = document
+            .placeholder
+            .read(cx)
+            .doc
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("the document is still loading"))?;
         let format = document.format.clone();
         let url = ely_lok::file_url(path);
         let mut worker = self
@@ -258,9 +264,10 @@ impl EngineDyn for LokEngine {
             .map_err(|_| anyhow::anyhow!("the document engine is not usable"))?;
         doc.save_owned(&mut worker, &url, &format)?;
         let mark = worker.values(&doc, ".uno:Undo")?;
+        let placeholder = document.placeholder.clone();
+        placeholder.update(cx, |loading, _| loading.mark = mark);
         if let Some(document) = self.documents.get_mut(&id) {
             document.path = path.to_path_buf();
-            document.mark = mark;
         }
         Ok(())
     }
@@ -269,9 +276,11 @@ impl EngineDyn for LokEngine {
         None
     }
 
-    fn close(&mut self, id: DocId) {
+    fn close(&mut self, id: DocId, cx: &App) {
         if let Some(document) = self.documents.remove(&id) {
-            if let Some(doc) = document.doc {
+            // The document may still be loading; then the kernel has none.
+            let doc = document.placeholder.read(cx).doc.clone();
+            if let Some(doc) = doc {
                 if let Ok(mut worker) = self.worker.lock() {
                     let _ = worker.close_doc(doc);
                 }
@@ -279,10 +288,10 @@ impl EngineDyn for LokEngine {
         }
     }
 
-    fn is_loading(&self, id: DocId) -> bool {
+    fn is_loading(&self, id: DocId, cx: &App) -> bool {
         self.documents
             .get(&id)
-            .map(|document| document.doc.is_none())
+            .map(|document| document.placeholder.read(cx).doc.is_none())
             .unwrap_or(false)
     }
 }

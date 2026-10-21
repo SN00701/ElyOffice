@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{
-    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window, div, img,
+    App, AppContext, Context, IntoElement, ParentElement, Render, Styled, Window, div, img,
 };
 
 use crate::engine::{CommandSpec, DocId, EngineKind, Opened, Source};
@@ -38,7 +38,6 @@ pub struct PdfView {
 struct PdfState {
     pdfium: Rc<Pdfium>,
     document: Document,
-    path: PathBuf,
     pages: Vec<(f32, f32)>,
     work: PathBuf,
     drawn: RefCell<HashMap<usize, Arc<gpui::Image>>>,
@@ -111,7 +110,6 @@ impl EngineDyn for PdfEngine {
         let state = Rc::new(PdfState {
             pdfium: pdfium.clone(),
             document,
-            path: path.clone(),
             pages,
             work,
             drawn: RefCell::new(HashMap::new()),
@@ -131,7 +129,7 @@ impl EngineDyn for PdfEngine {
                 work: state.work.clone(),
             },
         );
-        let view = cx.new(|cx| PdfView { state });
+        let view = cx.new(|_| PdfView { state });
         Ok(Opened {
             id,
             view: view.into(),
@@ -181,7 +179,7 @@ impl EngineDyn for PdfEngine {
         }
     }
 
-    fn write(&mut self, _id: DocId, _path: &Path, _cx: &App) -> anyhow::Result<()> {
+    fn write(&mut self, _id: DocId, _path: &Path, _cx: &mut App) -> anyhow::Result<()> {
         anyhow::bail!("the window shows PDFs but does not change them yet")
     }
 
@@ -189,7 +187,7 @@ impl EngineDyn for PdfEngine {
         None
     }
 
-    fn close(&mut self, id: DocId) {
+    fn close(&mut self, id: DocId, _cx: &App) {
         if let Some(document) = self.documents.remove(&id) {
             let _ = std::fs::remove_dir_all(&document.work);
         }
@@ -272,7 +270,7 @@ impl Render for PdfView {
                         )
                         .on_click(move |_, _, cx| {
                             state.shown.set(state.shown.get() + MORE_PAGES);
-                            this.update(cx, |view, cx| cx.notify());
+                            this.update(cx, |_, cx| cx.notify());
                         }),
                     )
                     .into_any_element(),
@@ -294,6 +292,3 @@ impl Render for PdfView {
 const FIRST_PAGES: usize = 8;
 /// How many more a click brings.
 const MORE_PAGES: usize = 8;
-
-/// How many pages are drawn at once.
-const MAX_PAGES: usize = 100;

@@ -40,7 +40,7 @@ fn two_engines_keep_their_documents_apart(cx: &mut TestAppContext) {
         assert!(text.text(first.id, cx).is_some());
         assert!(markdown.text(second.id, cx).is_some());
         // Closing a document in one engine leaves the other alone.
-        text.close(first.id);
+        text.close(first.id, cx);
         assert!(text.text(first.id, cx).is_none());
         assert!(markdown.text(second.id, cx).is_some());
     });

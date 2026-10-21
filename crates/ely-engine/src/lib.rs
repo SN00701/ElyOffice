@@ -68,19 +68,19 @@ pub trait EngineDyn: 'static {
     fn rename(&mut self, id: DocId, path: PathBuf);
 
     /// Writes the document to a file.
-    fn write(&mut self, id: DocId, path: &Path, cx: &App) -> anyhow::Result<()>;
+    fn write(&mut self, id: DocId, path: &Path, cx: &mut App) -> anyhow::Result<()>;
 
     /// The encoding the file is read and written in.
     fn encoding(&self, id: DocId) -> Option<Encoding>;
 
     /// Closes the document and lets the engine drop it.
-    fn close(&mut self, id: DocId);
+    fn close(&mut self, id: DocId, cx: &App);
 
     /// Whether the document is still being loaded.
     ///
     /// An engine that takes long to open a document says so here; the
     /// window shows a placeholder until the document is there.
-    fn is_loading(&self, _id: DocId) -> bool {
+    fn is_loading(&self, _id: DocId, _cx: &App) -> bool {
         false
     }
 }

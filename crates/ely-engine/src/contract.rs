@@ -65,7 +65,7 @@ pub fn check(engine: &mut dyn EngineDyn, cx: &mut App) -> anyhow::Result<()> {
     std::fs::remove_file(&path).ok();
 
     // The document lets go.
-    engine.close(id);
+    engine.close(id, cx);
     if engine.path(id).is_some() {
         anyhow::bail!("{}: a closed document is still there", kind.id);
     }

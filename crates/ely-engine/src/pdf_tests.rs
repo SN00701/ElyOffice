@@ -113,7 +113,7 @@ fn the_pdf_engine_opens_a_document(cx: &mut gpui::TestAppContext) {
             text.contains("MPelyoffice"),
             "the engine reads the text, got {text:?}"
         );
-        engine.close(opened.id);
+        engine.close(opened.id, cx);
     });
     std::fs::remove_file(&path).ok();
 }

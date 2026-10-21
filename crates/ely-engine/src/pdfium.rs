@@ -251,7 +251,7 @@ impl Pdfium {
         }
         // SAFETY: the kernel gave a buffer of the size we asked for.
         let bytes = unsafe { std::slice::from_raw_parts(buffer as *const u8, length as usize) };
-        let mut pixels = bytes.to_vec();
+        let pixels = bytes.to_vec();
         call!(self, bitmap_destroy, bitmap);
         Some(pixels)
     }
