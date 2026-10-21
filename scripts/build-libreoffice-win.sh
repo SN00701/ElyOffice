@@ -69,6 +69,16 @@ if [ ! -f "$src/autogen.sh" ]; then
   exit 1
 fi
 
+# A tree that has the patches of an earlier run does not look like the
+# series any more: the files the patches add are taken away, and the ones
+# they change are put back to what the series starts from.
+git -C "$src" checkout -- . >/dev/null 2>&1 || true
+for f in $patched; do
+  if ! git -C "$src" cat-file -e "HEAD:$f" 2>/dev/null; then
+    rm -f "$src/$f"
+  fi
+done
+
 "$root/scripts/apply-lo-patches.sh" "$src"
 
 options=(
