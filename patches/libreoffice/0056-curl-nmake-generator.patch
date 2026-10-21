@@ -2,17 +2,21 @@ The generator of the newer Visual Studio needs the C++ targets of that
 version, which the installation of that Visual Studio may not have, and the older
 targets are not the ones it looks for.  The generator that uses the compiler of
 the environment is used instead, and the folders of the compiler are given to it.
+CMake is a program of Windows, so the compiler is named the way Windows
+writes it.
 
 diff --git a/external/curl/ExternalProject_curl.mk b/external/curl/ExternalProject_curl.mk
-index f31c671bb..e92d01fb5 100644
+index f31c671bb..9f061269b 100644
 --- a/external/curl/ExternalProject_curl.mk
 +++ b/external/curl/ExternalProject_curl.mk
-@@ -74,13 +74,13 @@ $(call gb_ExternalProject_get_state_target,curl,build):
+@@ -74,13 +74,15 @@ $(call gb_ExternalProject_get_state_target,curl,build):
  
  else ifeq ($(COM),MSC)
  
 +$(call gb_ExternalProject_get_state_target,curl,build): export INCLUDE := $(gb_ExternalProject_INCLUDE)
 +$(call gb_ExternalProject_get_state_target,curl,build): export LIB := $(ILIB)
++$(call gb_ExternalProject_get_state_target,curl,build): export CC := $(shell cygpath -m $(CC))
++$(call gb_ExternalProject_get_state_target,curl,build): export CXX := $(shell cygpath -m $(CXX))
  $(call gb_ExternalProject_get_state_target,curl,build):
  	$(call gb_Trace_StartRange,curl,EXTERNAL)
  	$(call gb_ExternalProject_run,build,\
