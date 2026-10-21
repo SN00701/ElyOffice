@@ -1,12 +1,33 @@
 //! The writing of the documents: save, save as, and the list of the files
 //! that were opened.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use ely_engine::EngineKind;
 use gpui::Context;
 
 use super::Office;
 use crate::kinds;
+
+/// The path a document is written to: the one that was chosen, with the
+/// extension of its kind when it has none.
+pub fn with_extension(path: &Path, kind: EngineKind) -> PathBuf {
+    if path.extension().is_some() {
+        return path.to_path_buf();
+    }
+    let mut path = path.to_path_buf();
+    path.set_extension(kind.default_extension);
+    path
+}
+
+/// The name a new document is offered under: its own name, with the
+/// extension of its kind when it has none.
+pub fn suggested_name(name: &str, kind: EngineKind) -> String {
+    if Path::new(name).extension().is_some() {
+        return name.to_string();
+    }
+    format!("{name}.{}", kind.default_extension)
+}
 
 impl Office {
     pub(super) fn save_all(&mut self, cx: &mut Context<Self>) -> usize {
@@ -36,6 +57,13 @@ impl Office {
             return;
         };
         let (kind, name) = tab;
+        // A new document has no name of its own yet; it gets the extension of
+        // its kind, so the file says what it is.
+        let suggested = if Path::new(&name).extension().is_some() {
+            name
+        } else {
+            format!("{name}.{}", kind.default_extension)
+        };
         let label = kinds::label(kind, cx).to_string();
         cx.spawn(
             async move |this, cx| {
@@ -43,7 +71,7 @@ impl Office {
                     .background_executor()
                     .spawn(async move {
                         rfd::FileDialog::new()
-                            .set_file_name(&name)
+                            .set_file_name(&suggested)
                             .add_filter(
                                 &label,
                                 &kind.extensions.iter().copied().collect::<Vec<_>>(),
@@ -62,9 +90,19 @@ impl Office {
 
     /// Writes one document to another file, and points the tab at it.
     pub(super) fn save_as_to(&mut self, index: usize, path: PathBuf, cx: &mut Context<Self>) {
-        if self.tabs.get(index).is_none() {
+        let Some(tab) = self.tabs.get(index) else {
             return;
-        }
+        };
+        // A name without an extension gets the one of the kind, so the file
+        // says what it is.
+        let kind = tab.kind;
+        let path = if path.extension().is_some() {
+            path
+        } else {
+            let mut name = path.clone();
+            name.set_extension(kind.default_extension);
+            name
+        };
         let name = path
             .file_name()
             .map(|name| name.to_string_lossy().to_string())
@@ -128,5 +166,32 @@ impl Office {
         self.recent.retain(|known| known != path);
         self.recent.insert(0, path.to_path_buf());
         self.recent.truncate(10);
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::{suggested_name, with_extension};
+    use ely_engine::EngineKind;
+
+    fn document() -> EngineKind {
+        EngineKind {
+            id: "document",
+            extensions: &["docx", "odt", "doc", "rtf"],
+            default_extension: "docx",
+        }
+    }
+
+    #[test]
+    fn a_new_document_is_offered_with_the_extension_of_its_kind() {
+        assert_eq!(suggested_name("文档 1", document()), "文档 1.docx");
+        assert_eq!(suggested_name("报告.docx", document()), "报告.docx");
+    }
+
+    #[test]
+    fn a_file_without_an_extension_gets_the_one_of_its_kind() {
+        let written = with_extension(std::path::Path::new("F:/out/报告"), document());
+        assert_eq!(written.file_name().unwrap(), "报告.docx");
+        let kept = with_extension(std::path::Path::new("F:/out/报告.rtf"), document());
+        assert_eq!(kept.file_name().unwrap(), "报告.rtf");
     }
 }
