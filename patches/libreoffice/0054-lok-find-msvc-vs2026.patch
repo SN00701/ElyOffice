@@ -11,7 +11,7 @@ folder whose name has a space cannot be used at all (the build would need
 the short names, which may be turned off), so the build may hand over a
 path of its own through ELY_VS_ALIAS; that path is used as it is.
 diff --git a/configure.ac b/configure.ac
-index 9f67ee4..18e7012 100644
+index 9f67ee4..fcbea73 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -168,7 +168,10 @@ PathFormat()
@@ -65,3 +65,16 @@ index 9f67ee4..18e7012 100644
  
      fi
  }
+@@ -13144,7 +13170,11 @@ if test \( "$ENABLE_SKIA" = TRUE -o "$ENABLE_PDFIUM" = TRUE \) -a "$COM_IS_CLANG
+     else
+         if test "$_os" = "WINNT"; then
+             AC_MSG_CHECKING([for clang-cl])
+-            if test -x "$VC_PRODUCT_DIR/Tools/Llvm/bin/clang-cl.exe"; then
++            # The build may bring its own clang-cl, for instance the one
++            # that comes with Cygwin; Visual Studio does not always have it.
++            if test -n "$ELY_CLANG_CL" -a -x "$ELY_CLANG_CL"; then
++                LO_CLANG_CC=`win_short_path_for_make "$ELY_CLANG_CL"`
++            elif test -x "$VC_PRODUCT_DIR/Tools/Llvm/bin/clang-cl.exe"; then
+                 LO_CLANG_CC=`win_short_path_for_make "$VC_PRODUCT_DIR/Tools/Llvm/bin/clang-cl.exe"`
+             elif test -n "$PROGRAMFILES" -a -x "$(cygpath -u "$PROGRAMFILES/LLVM/bin/clang-cl.exe")"; then
+                 LO_CLANG_CC=`win_short_path_for_make "$PROGRAMFILES/LLVM/bin/clang-cl.exe"`

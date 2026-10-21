@@ -116,6 +116,13 @@ if [ -d "/cygdrive/d/Program Files/Microsoft Visual Studio/18/Community" ]; then
 fi
 options+=(--with-visual-studio="$vs")
 
+# The build wants clang-cl for the parts that Skia and PDFium bring with
+# them, and Visual Studio does not always have it.  Cygwin's own does.
+if [ -z "${ELY_CLANG_CL:-}" ] && [ -x /cygdrive/f/cygwin64/bin/clang-cl.exe ]; then
+  export ELY_CLANG_CL=/cygdrive/f/cygwin64/bin/clang-cl.exe
+  echo "build-libreoffice-win: clang-cl comes from Cygwin"
+fi
+
 # The compiler needs the environment Visual Studio sets up: the headers
 # and the libraries of the tool set and of the Windows SDK.  A batch file
 # of our own asks Visual Studio for it, because a command line with the
