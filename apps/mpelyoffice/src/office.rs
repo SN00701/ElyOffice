@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use ely_engine::{DocId, EngineDyn, EngineKind, PdfEngine, Registry, Source, TextEngine};
+use ely_engine::{DocId, EngineDyn, EngineKind, LokEngine, PdfEngine, Registry, Source, TextEngine};
 use ely_gpui_component::{
     buttons::Button,
     navigation::{EditorTab, EditorTabs},
@@ -33,6 +33,10 @@ pub struct Office {
     focus: FocusHandle,
     registry: Registry,
     engines: HashMap<&'static str, Box<dyn EngineDyn>>,
+    /// The worker of the document engine, when it started.
+    lok: Option<std::sync::Arc<std::sync::Mutex<ely_lok::Worker>>>,
+    /// Why the document engine did not start.
+    lok_error: Option<String>,
     tabs: Vec<Tab>,
     active: Option<usize>,
     next: u64,
@@ -91,8 +95,18 @@ fn menus(app: ely_platform::AppId, cx: &App) -> Vec<Menu> {
 pub fn open(app: ely_platform::AppId, window: &mut Window, cx: &mut App) -> Entity<Office> {
     cx.set_menus(menus(app, cx));
     ely_ui::commands::bind_keys(cx);
+    // The document engine starts with the window, as the other applications
+    // do; when it cannot start, the window says so instead of failing
+    // later on a file.
+    let (lok, lok_error) = match ely_office::start(app, cx) {
+        Ok((worker, _work)) => (Some(worker), None),
+        Err(error) => {
+            log::warn!("office: the document engine did not start: {error}");
+            (None, Some(error.to_string()))
+        }
+    };
     let files = ely_ui::launch_files(cx);
-    let office = cx.new(|cx| Office::new(cx));
+    let office = cx.new(|cx| Office::new(lok, lok_error, cx));
     ely_ui::on_open(cx, {
         let office = office.clone();
         move |path, cx| {
@@ -110,7 +124,11 @@ pub fn open(app: ely_platform::AppId, window: &mut Window, cx: &mut App) -> Enti
 }
 
 impl Office {
-    fn new(cx: &mut Context<Self>) -> Self {
+    fn new(
+        lok: Option<std::sync::Arc<std::sync::Mutex<ely_lok::Worker>>>,
+        lok_error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let mut engines: HashMap<&'static str, Box<dyn EngineDyn>> = HashMap::new();
         engines.insert("text", Box::new(TextEngine::text()));
         engines.insert("markdown", Box::new(TextEngine::markdown()));
@@ -119,6 +137,8 @@ impl Office {
             focus: cx.focus_handle(),
             registry: Registry::new(),
             engines,
+            lok,
+            lok_error,
             tabs: Vec::new(),
             active: None,
             next: 0,
@@ -128,6 +148,17 @@ impl Office {
             pending_close: false,
             pending_tab: None,
         }
+    }
+
+    /// The engine for a kind, made when the document engine is there.
+    fn engine_for(&mut self, kind: EngineKind) -> Option<&mut Box<dyn EngineDyn>> {
+        if self.engines.contains_key(kind.id) {
+            return self.engines.get_mut(kind.id);
+        }
+        let worker = self.lok.clone()?;
+        let engine = LokEngine::new(kind, worker);
+        self.engines.insert(kind.id, Box::new(engine));
+        self.engines.get_mut(kind.id)
     }
 
     /// The engine for a kind, if the window has it.
@@ -167,16 +198,19 @@ impl Office {
     ) {
         let id = self.next;
         self.next += 1;
-        let (doc, view) = match self.engine(kind) {
+        let (doc, view) = match self.engine_for(kind) {
             Some(engine) => match engine.open(source, cx) {
                 Ok(opened) => (Some(opened.id), opened.view),
                 Err(error) => {
-                    log::error!("office: {} did not open: {error}", kind.id);
+                    log::error!("office: {} did not open: {error:#}", kind.id);
+                    let reason = format!("{error:#}");
+                    self.notice = Some(reason.clone().into());
                     let placeholder = cx.new(|cx| {
                         Placeholder::new(
                             kinds::label(kind, cx),
                             path.clone(),
                             kinds::module(kind),
+                            Some(reason),
                             cx,
                         )
                     });
@@ -184,8 +218,15 @@ impl Office {
                 }
             },
             None => {
+                let reason = self.lok_error.clone();
                 let placeholder = cx.new(|cx| {
-                    Placeholder::new(kinds::label(kind, cx), path.clone(), kinds::module(kind), cx)
+                    Placeholder::new(
+                        kinds::label(kind, cx),
+                        path.clone(),
+                        kinds::module(kind),
+                        reason,
+                        cx,
+                    )
                 });
                 (None, placeholder.into())
             }

@@ -2035,6 +2035,7 @@ version = "0.1.9"
 dependencies = [
  "anyhow",
  "ely-gpui-component",
+ "ely-lok",
  "ely-platform",
  "encoding_rs",
  "gpui-pre",
@@ -4863,6 +4864,8 @@ dependencies = [
  "directories",
  "ely-engine",
  "ely-gpui-component",
+ "ely-lok",
+ "ely-office",
  "ely-platform",
  "ely-ui",
  "embed-resource",

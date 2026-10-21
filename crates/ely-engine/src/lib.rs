@@ -5,6 +5,7 @@ pub mod contract;
 mod contract_tests;
 pub mod encoding;
 pub mod engine;
+pub mod lok;
 pub mod pdf;
 #[cfg(test)]
 mod pdf_tests;
@@ -18,6 +19,7 @@ use gpui::{App, AnyView};
 
 pub use encoding::{Encoding, Fingerprint};
 pub use engine::{CommandSpec, DocId, EngineKind, Opened, Source};
+pub use lok::LokEngine;
 pub use pdf::PdfEngine;
 pub use registry::Registry;
 pub use text::TextEngine;

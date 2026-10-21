@@ -160,6 +160,23 @@ pub fn install_as(locale: &'static str, cx: &mut App) {
 /// Keys and messages of one language.
 type Catalog = Vec<(&'static str, &'static str)>;
 
+/// No key may be said twice in one language: the second would be lost.
+#[cfg(test)]
+mod catalog_tests {
+    use super::*;
+
+    #[test]
+    fn the_catalogs_hold_no_repeated_key() {
+        let (en, zh) = catalogs();
+        for (name, messages) in [("en-US", &en), ("zh-CN", &zh)] {
+            let mut seen = std::collections::HashSet::new();
+            for (key, _) in messages.iter() {
+                assert!(seen.insert(*key), "{name} repeats the key {key}");
+            }
+        }
+    }
+}
+
 /// The English and Chinese catalogs, every module's messages.
 fn catalogs() -> (Catalog, Catalog) {
     let en: Vec<_> = EN

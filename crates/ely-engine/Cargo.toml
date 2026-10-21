@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 anyhow.workspace = true
 ely-gpui-component.workspace = true
+ely-lok = { workspace = true, features = ["view"] }
 ely-platform.workspace = true
 encoding_rs.workspace = true
 gpui.workspace = true

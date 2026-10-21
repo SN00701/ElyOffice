@@ -10,6 +10,8 @@ pub struct Placeholder {
     pub kind: SharedString,
     pub path: Option<PathBuf>,
     pub module: Option<ely_platform::AppId>,
+    /// Why the document could not be opened, when there is a reason.
+    pub reason: Option<String>,
 }
 
 impl Placeholder {
@@ -18,12 +20,14 @@ impl Placeholder {
         kind: SharedString,
         path: Option<PathBuf>,
         module: Option<ely_platform::AppId>,
+        reason: Option<String>,
         _cx: &mut Context<Self>,
     ) -> Self {
         Self {
             kind,
             path,
             module,
+            reason,
         }
     }
 }
@@ -58,6 +62,9 @@ impl Render for Placeholder {
                 .child(ely_ui::i18n::text(cx, "mpelyoffice.placeholder.engine", &[]))
                 .into_any_element(),
         ];
+        if let Some(reason) = self.reason.clone() {
+            parts.push(div().text_xs().child(reason).into_any_element());
+        }
         if let Some(button) = handover {
             parts.push(button.into_any_element());
         }
