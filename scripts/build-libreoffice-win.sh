@@ -98,6 +98,16 @@ options=(
   --with-myspell-dicts
 )
 
+# The tiled rendering on Windows draws through the Win32 device, and the
+# patch 0044 is about that device.  Skia and the PDF import of LibreOffice
+# are not needed for it, and they would ask for a clang-cl that this
+# machine does not have.
+if [ "${ELY_WITH_SKIA:-no}" = "yes" ]; then
+  options+=(--enable-skia --enable-pdfium)
+else
+  options+=(--disable-skia --disable-pdfium)
+fi
+
 # Unix-only switches do not apply here.
 kept=()
 for option in "${options[@]}"; do
