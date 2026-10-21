@@ -6,6 +6,8 @@ mod contract_tests;
 pub mod encoding;
 pub mod engine;
 pub mod lok;
+#[cfg(test)]
+mod lok_tests;
 pub mod pdf;
 #[cfg(test)]
 mod pdf_tests;
