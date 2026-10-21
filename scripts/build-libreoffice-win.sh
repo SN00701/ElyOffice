@@ -178,6 +178,12 @@ BAT
       case "$key" in
         INCLUDE) continue ;;
       esac
+      # The build tools put their own name for the version of the C library
+      # into the environment of the compiler, and they fall over when the
+      # environment has that name already under another spelling.
+      case "$key" in
+        UCRTVersion | UCRTVERSION) continue ;;
+      esac
       # A name that differs only in its case is the same name to Windows and
       # to the build tools, and two of them in the environment make them
       # fall over ("an item with the same key has already been added").
