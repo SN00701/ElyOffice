@@ -245,6 +245,9 @@ if [ ! -x /opt/lo/bin/pkg-config ] && [ -f "$root/scripts/pkgconf-stub.rs" ]; th
     echo "build-libreoffice-win: the stand-in for pkg-config is made"
   fi
 fi
+# The packages ask for their flags by name; the stand-in answers for the ones
+# the build has of its own.
+export PKG_CONFIG=/opt/lo/bin/pkg-config
 
 # The externals that are built with MSBuild ask for the targets of the Visual
 # Studio that is installed, by the name of its version.  This installation has
