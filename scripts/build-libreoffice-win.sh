@@ -19,6 +19,20 @@ jobs=${ELY_BUILD_JOBS:-$(nproc)}
 
 mkdir -p "$ELY_LO_ROOT"
 
+# Windows reads a name the same whatever its case, but the environment of the
+# build tools is read with the case, and two spellings of one name make them
+# fall over ("an item with the same key has already been added").  The name
+# in small letters is kept, the one in capitals is let go.
+names=$(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p')
+small=$(printf '%s\n' $names | tr 'A-Z' 'a-z')
+for name in $names; do
+  lower=$(printf '%s' "$name" | tr 'A-Z' 'a-z')
+  [ "$name" = "$lower" ] && continue
+  case " $small " in
+    *" $lower "*) unset "$name" ;;
+  esac
+done
+
 # The files Ely's patches touch.  The tree is a partial clone, so those blobs
 # are not here yet; checking them out fetches them in one request instead of
 # one request per file, which is the difference between minutes and hours.
