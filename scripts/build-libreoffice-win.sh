@@ -154,7 +154,11 @@ BAT
   envfile=$ELY_LO_ROOT/msvc-env.txt
   cmd.exe /c "`cygpath -w "$batch"`" > "$envfile" 2>/dev/null || true
   if [ -s "$envfile" ]; then
-    imported=
+    # The names that are in the environment already.  A name that differs
+    # only in its case is the same name to Windows and to the build tools,
+    # and two of them make them fall over ("an item with the same key has
+    # already been added").
+    imported=$(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' | tr 'A-Z' 'a-z' | tr '\n' ' ')
     while IFS= read -r line; do
       key=${line%%=*}
       value=${line#*=}
