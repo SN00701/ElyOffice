@@ -242,6 +242,10 @@ fi
 # Cygwin's make, never Git Bash's; MSYSTEM misleads the build.
 unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
 export PATH=/opt/lo/bin:$PATH
+# The programs of Windows that the build runs (CMake, meson) look for the
+# libraries of the compiler the way Windows writes the path; the folders of
+# Windows are named that way as well.
+export PATH="$PATH:C:\\Windows\\System32:C:\\Windows"
 # The Rust of the machine, for the stand-in below.
 export PATH="$PATH:$(cygpath -u "${USERPROFILE:-C:/Users/$USERNAME}")/.cargo/bin"
 
