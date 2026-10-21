@@ -37,7 +37,12 @@ pub struct Loaded {
     pub text: String,
     pub encoding: Encoding,
     pub fingerprint: Fingerprint,
+    /// The file was larger than the window; the text is only the beginning.
+    pub truncated: bool,
 }
+
+/// How much of a text file is read; a document is not a disk image.
+pub const MAX_TEXT_BYTES: usize = 16 * 1024 * 1024;
 
 /// The file's size and time, for spotting an outside change.
 pub fn fingerprint(path: &Path) -> Option<Fingerprint> {
@@ -58,17 +63,28 @@ pub fn load(path: &Path) -> Loaded {
                 len: 0,
                 modified: None,
             },
+            truncated: false,
         };
     };
     let fingerprint = fingerprint(path).unwrap_or(Fingerprint {
         len: bytes.len() as u64,
         modified: None,
     });
+    let (bytes, truncated) = if bytes.len() > MAX_TEXT_BYTES {
+        log::warn!(
+            "engine: {} is bigger than the window; only the beginning is read",
+            path.display()
+        );
+        (bytes[..MAX_TEXT_BYTES].to_vec(), true)
+    } else {
+        (bytes, false)
+    };
     let (text, encoding) = decode(&bytes);
     Loaded {
         text,
         encoding,
         fingerprint,
+        truncated,
     }
 }
 

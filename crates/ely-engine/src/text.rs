@@ -80,6 +80,7 @@ impl EngineDyn for TextEngine {
                         len: 0,
                         modified: None,
                     },
+                    truncated: false,
                 },
             ),
         };

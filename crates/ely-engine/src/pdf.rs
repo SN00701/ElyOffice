@@ -1,6 +1,6 @@
 //! The PDF engine: the PDFium kernel reads and draws the document.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -42,6 +42,8 @@ struct PdfState {
     pages: Vec<(f32, f32)>,
     work: PathBuf,
     drawn: RefCell<HashMap<usize, Arc<gpui::Image>>>,
+    /// How many pages are drawn; the rest come when the reader asks.
+    shown: Cell<usize>,
 }
 
 impl PdfEngine {
@@ -113,6 +115,7 @@ impl EngineDyn for PdfEngine {
             pages,
             work,
             drawn: RefCell::new(HashMap::new()),
+            shown: Cell::new(FIRST_PAGES),
         });
         let id = self.next;
         self.next += 1;
@@ -234,9 +237,9 @@ impl Render for PdfView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = self.state.clone();
         let count = state.pages.len();
-        // A document with very many pages would take long to draw; the rest
-        // is said plainly instead of being left out quietly.
-        let shown = count.min(MAX_PAGES);
+        // Only the pages the reader has asked for are drawn; a thousand-page
+        // document does not cost a thousand pictures at the first frame.
+        let shown = state.shown.get().min(count);
         let mut items = Vec::new();
         for index in 0..shown {
             let picture = state.page_image(index);
@@ -257,11 +260,21 @@ impl Render for PdfView {
                     .into_any_element(),
             );
         }
-        if count > shown {
+        if shown < count {
+            let this = cx.entity();
+            let state = state.clone();
             items.push(
                 div()
-                    .text_sm()
-                    .child(format!("这份 PDF 有 {count} 页，这里只画了前 {shown} 页。"))
+                    .child(
+                        ely_gpui_component::buttons::Button::new(
+                            "pdf-more",
+                            format!("再显示 {MORE_PAGES} 页（共 {count} 页）"),
+                        )
+                        .on_click(move |_, _, cx| {
+                            state.shown.set(state.shown.get() + MORE_PAGES);
+                            this.update(cx, |view, cx| cx.notify());
+                        }),
+                    )
                     .into_any_element(),
             );
         }
@@ -276,6 +289,11 @@ impl Render for PdfView {
         body
     }
 }
+
+/// How many pages are drawn at the first frame.
+const FIRST_PAGES: usize = 8;
+/// How many more a click brings.
+const MORE_PAGES: usize = 8;
 
 /// How many pages are drawn at once.
 const MAX_PAGES: usize = 100;
