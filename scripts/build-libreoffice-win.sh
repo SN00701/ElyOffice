@@ -232,6 +232,7 @@ fi
 # Cygwin's make, never Git Bash's; MSYSTEM misleads the build.
 unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
 export PATH=/opt/lo/bin:$PATH
+echo "build-libreoffice-win: the path is $PATH"
 
 # The build asks the packages it builds itself for their flags, and a
 # machine without them has no answer.  The stand-in answers for the ones the
@@ -246,8 +247,12 @@ if [ ! -x /opt/lo/bin/pkg-config ] && [ -f "$root/scripts/pkgconf-stub.rs" ]; th
   fi
 fi
 # The packages ask for their flags by name; the stand-in answers for the ones
-# the build has of its own.
+# the build has of its own.  The name in the build's own settings is empty,
+# and an empty name keeps the packages from looking for one at all.
 export PKG_CONFIG=/opt/lo/bin/pkg-config
+if [ -f config_host.mk ]; then
+  sed -i "s|^export PKG_CONFIG=.*|export PKG_CONFIG=$(cygpath -m /opt/lo/bin/pkg-config)|" config_host.mk
+fi
 
 # The externals that are built with MSBuild ask for the targets of the Visual
 # Studio that is installed, by the name of its version.  This installation has
