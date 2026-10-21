@@ -1,6 +1,7 @@
 // Release builds open no console on Windows.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod home;
 mod kinds;
 #[cfg(test)]
 mod kinds_tests;

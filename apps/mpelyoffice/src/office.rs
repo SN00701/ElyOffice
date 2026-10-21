@@ -11,9 +11,11 @@ use ely_gpui_component::{
 };
 use gpui::{
     Action, AnyView, App, AppContext, Context, Entity, FocusHandle, InteractiveElement as _,
-    IntoElement, Menu, MenuItem, ParentElement, Render, SharedString, Styled, Window, div,
+    IntoElement, Menu, MenuItem, ParentElement, Render, SharedString, Styled, Subscription, Window,
+    div,
 };
 
+use crate::home::{Home, HomeEvent};
 use crate::kinds;
 use crate::placeholder::Placeholder;
 
@@ -30,9 +32,15 @@ struct Tab {
 
 /// The unified window.
 pub struct Office {
-    focus: FocusHandle,
-    registry: Registry,
-    engines: HashMap<&'static str, Box<dyn EngineDyn>>,
+   focus: FocusHandle,
+   registry: Registry,
+   engines: HashMap<&'static str, Box<dyn EngineDyn>>,
+    /// The start page, when it is there.
+    home: Option<Entity<Home>>,
+    /// Keeps the start page's requests listened to.
+    home_watch: Option<Subscription>,
+    /// Whether the sheet that asks what to make is open.
+    newing: bool,
     /// The worker of the document engine, when it started.
     lok: Option<std::sync::Arc<std::sync::Mutex<ely_lok::Worker>>>,
     /// Why the document engine did not start.
@@ -107,6 +115,18 @@ pub fn open(app: ely_platform::AppId, window: &mut Window, cx: &mut App) -> Enti
     };
     let files = ely_ui::launch_files(cx);
     let office = cx.new(|cx| Office::new(lok, lok_error, cx));
+    // The start page, with the files of late.
+    let data =
+        ely_platform::data_dir(app).unwrap_or_else(|_| std::env::temp_dir().join("MPelyoffice"));
+    let home = cx.new(|cx| Home::new(data, window, cx));
+    office.update(cx, |office, cx| {
+        office.home = Some(home.clone());
+        office.home_watch = Some(cx.subscribe(&home, |office, _, event, cx| match event {
+            HomeEvent::Open(path) => office.open_path(path.clone(), cx),
+            HomeEvent::Pick => office.pick(cx),
+            HomeEvent::New(kind) => office.new_document(*kind, cx),
+            }));
+    });
     ely_ui::on_open(cx, {
         let office = office.clone();
         move |path, cx| {
@@ -136,6 +156,9 @@ impl Office {
         Self {
             focus: cx.focus_handle(),
             registry: Registry::new(),
+            home: None,
+        home_watch: None,
+            newing: false,
             engines,
             lok,
             lok_error,
@@ -566,7 +589,10 @@ impl Office {
     fn body(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
         match self.active_tab() {
             Some(tab) => tab.view.clone().into_any_element(),
-            None => self.start_page(cx).into_any_element(),
+            None => match &self.home {
+                Some(home) => home.clone().into_any_element(),
+                None => self.start_page(cx).into_any_element(),
+            },
         }
     }
 
@@ -801,8 +827,15 @@ impl Render for Office {
         if let Some(notice) = notice {
             shell = shell.child(notice);
         }
+        // A file that is dropped in opens by its own kind.
+        let dropped = cx.entity();
         div()
             .size_full()
+            .on_drop::<Vec<PathBuf>>(move |paths, _, cx| {
+                for path in paths {
+                    let _ = dropped.update(cx, |office, cx| office.open_path(path.clone(), cx));
+                }
+            })
             .on_action(cx.listener(|office, _: &ely_ui::commands::New, _, cx| {
                 let kind = office
                     .registry
