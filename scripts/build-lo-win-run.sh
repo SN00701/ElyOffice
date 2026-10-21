@@ -9,9 +9,13 @@ export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH="$PATH:/cygdrive/c/Windows/system32:/cygdrive/c/Windows"
 export PATH="$PATH:/cygdrive/c/Program Files/Microsoft/jdk-17.0.19.10-hotspot/bin"
 
+# The names of the proxy are in capitals: the build tools put their own
+# spelling of them into the environment of the compiler, and they fall over
+# when the environment has another spelling of the same name.
+unset no_proxy http_proxy https_proxy all_proxy ftp_proxy
 export HTTP_PROXY=${HTTP_PROXY:-http://127.0.0.1:7897}
 export HTTPS_PROXY=${HTTPS_PROXY:-http://127.0.0.1:7897}
-export no_proxy=127.0.0.1,localhost
+export NO_PROXY=${NO_PROXY:-127.0.0.1,localhost}
 
 export ELY_LO_ROOT=${ELY_LO_ROOT:-/cygdrive/f/mpely-lo}
 export ELY_BUILD_JOBS=${ELY_BUILD_JOBS:-16}

@@ -24,16 +24,10 @@ mkdir -p "$ELY_LO_ROOT"
 # fall over ("an item with the same key has already been added").  The name
 # in capitals is the one the build tools use, so the one in small letters is
 # let go.
-names=$(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p')
-for name in $names; do
-  case "$name" in
-    *[A-Z]*) continue ;;
-  esac
-  upper=$(printf '%s' "$name" | tr 'a-z' 'A-Z')
-  case " $names " in
-    *" $upper "*) unset "$name" ;;
-  esac
-done
+unset no_proxy http_proxy https_proxy all_proxy ftp_proxy
+export NO_PROXY=${NO_PROXY:-127.0.0.1,localhost}
+export HTTP_PROXY=${HTTP_PROXY:-http://127.0.0.1:7897}
+export HTTPS_PROXY=${HTTPS_PROXY:-http://127.0.0.1:7897}
 
 # The files Ely's patches touch.  The tree is a partial clone, so those blobs
 # are not here yet; checking them out fetches them in one request instead of
