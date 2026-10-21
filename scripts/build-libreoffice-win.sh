@@ -232,7 +232,8 @@ fi
 # Cygwin's make, never Git Bash's; MSYSTEM misleads the build.
 unset MSYSTEM MSYSTEM_PREFIX MINGW_PREFIX MSYSTEM_CHOST MSYSTEM_CARCH
 export PATH=/opt/lo/bin:$PATH
-echo "build-libreoffice-win: the path is $PATH"
+# The Rust of the machine, for the stand-in below.
+export PATH="$PATH:$HOME/.cargo/bin"
 
 # The build asks the packages it builds itself for their flags, and a
 # machine without them has no answer.  The stand-in answers for the ones the
@@ -250,9 +251,6 @@ fi
 # the build has of its own.  The name in the build's own settings is empty,
 # and an empty name keeps the packages from looking for one at all.
 export PKG_CONFIG=/opt/lo/bin/pkg-config.exe
-if [ -f config_host.mk ]; then
-  sed -i "s|^export PKG_CONFIG=.*|export PKG_CONFIG=$(cygpath -m /opt/lo/bin/pkg-config.exe)|" config_host.mk
-fi
 
 # The externals that are built with MSBuild ask for the targets of the Visual
 # Studio that is installed, by the name of its version.  This installation has
@@ -280,6 +278,11 @@ fi
 if [ -f config_host.mk ]; then
   sed -i 's/ MORE_FONTS / /' config_host.mk
   echo "build-libreoffice-win: the fonts are left out of the build"
+  # The packages ask for their flags by name; the stand-in answers for the
+  # ones the build has of its own.  The name in the build's own settings is
+  # empty, and an empty name keeps the packages from looking for one at all.
+  sed -i "s|^export PKG_CONFIG=.*|export PKG_CONFIG=$(cygpath -m /opt/lo/bin/pkg-config.exe)|" config_host.mk
+  echo "build-libreoffice-win: the packages are asked for by the stand-in"
 fi
 
 # Visual Studio may come without a CMake of its own, and the build writes
