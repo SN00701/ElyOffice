@@ -222,7 +222,7 @@ fi
 # machine has turned off).  A junction with a short name of its own solves
 # it, and a junction needs no administrator rights.
 if [ -z "${ELY_VS_ALIAS:-}" ] && [ "$vs" = "2026" ]; then
-  powershell.exe -NoProfile -Command "if (-not (Test-Path 'F:\VS18\Common7')) { cmd /c mklink /J F:\VS18 'D:\Program Files\Microsoft Visual Studio\18\Community' }" >/dev/null 2>&1 || true
+  powershell.exe -NoProfile -Command "if (-not (Test-Path 'F:\VS18\Common7')) { cmd /c mklink /J F:\VS18 \"D:\Program Files\Microsoft Visual Studio\18\Community\" }" >/dev/null 2>&1 || true
   if [ -d "/cygdrive/f/VS18/VC/Tools/MSVC" ]; then
     export ELY_VS_ALIAS='F:\VS18'
     echo "build-libreoffice-win: Visual Studio is reached through $ELY_VS_ALIAS"
@@ -266,7 +266,7 @@ fi
 # have a space in it.  The CMake that is on the machine stands in, reached
 # through a junction (a junction needs no administrator rights).
 if [ -f config_host.mk ] && ! [ -f /cygdrive/f/VS18/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe ]; then
-  powershell.exe -NoProfile -Command "if (-not (Test-Path 'F:\CMake\bin\cmake.exe')) { cmd /c mklink /J F:\CMake 'D:\Program Files\CMake' }" >/dev/null 2>&1 || true
+  powershell.exe -NoProfile -Command "if (-not (Test-Path 'F:\CMake\bin\cmake.exe')) { cmd /c mklink /J F:\CMake \"D:\Program Files\CMake\" }" >/dev/null 2>&1 || true
   if [ -f /cygdrive/f/CMake/bin/cmake.exe ]; then
     sed -i 's|^CMAKE=.*|CMAKE=F:/CMake/bin/cmake.exe|' config_host.mk
     echo "build-libreoffice-win: the CMake of the machine is used"
