@@ -103,9 +103,12 @@ options=(
 # are not needed for it, and they would ask for a clang-cl that this
 # machine does not have.
 if [ "${ELY_WITH_SKIA:-no}" = "yes" ]; then
-  options+=(--enable-skia --enable-pdfium)
+  options+=(--enable-skia --enable-pdfium --enable-pdfimport)
 else
-  options+=(--disable-skia --disable-pdfium)
+  # The PDF import of LibreOffice (opening a PDF in Draw) is a thing of its
+  # own and asks for the same kernel; the window has a PDF engine of its
+  # own, and the export of a document to PDF does not need either.
+  options+=(--disable-skia --disable-pdfium --disable-pdfimport)
 fi
 
 # Unix-only switches do not apply here.
