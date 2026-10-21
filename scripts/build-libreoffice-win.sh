@@ -261,6 +261,18 @@ if [ -f config_host.mk ]; then
   echo "build-libreoffice-win: the fonts are left out of the build"
 fi
 
+# Visual Studio may come without a CMake of its own, and the build writes
+# the path of the one it found into the commands it runs, so the path may not
+# have a space in it.  The CMake that is on the machine stands in, reached
+# through a junction (a junction needs no administrator rights).
+if [ -f config_host.mk ] && ! [ -f /cygdrive/f/VS18/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe ]; then
+  powershell.exe -NoProfile -Command "if (-not (Test-Path 'F:\CMake\bin\cmake.exe')) { cmd /c mklink /J F:\CMake 'D:\Program Files\CMake' }" >/dev/null 2>&1 || true
+  if [ -f /cygdrive/f/CMake/bin/cmake.exe ]; then
+    sed -i 's|^CMAKE=.*|CMAKE=F:/CMake/bin/cmake.exe|' config_host.mk
+    echo "build-libreoffice-win: the CMake of the machine is used"
+  fi
+fi
+
 # The build fetches its tarballs one after another, and one connection on a
 # slow line is the bottleneck.  They are fetched here, several at a time, so
 # the build finds them in place.
