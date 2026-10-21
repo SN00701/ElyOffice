@@ -1,0 +1,88 @@
+MPelyoffice does not ship fonts (ADR-003): the machine that runs the kernel
+has the fonts, and the package stays small.  The module that fetches the Noto,
+DejaVu and Liberation families is therefore empty, so the build neither
+downloads nor installs them.
+
+The fonts are only used for the list in the font box and for the samples in
+the tests; the kernel lays out with the fonts of the machine that runs it.
+diff --git a/external/more_fonts/Module_more_fonts.mk b/external/more_fonts/Module_more_fonts.mk
+index cb9cd075d..eca12696a 100644
+--- a/external/more_fonts/Module_more_fonts.mk
++++ b/external/more_fonts/Module_more_fonts.mk
+@@ -9,75 +9,6 @@
+ 
+ $(eval $(call gb_Module_Module,more_fonts))
+ 
+-$(eval $(call gb_Module_add_targets,more_fonts,\
+-	ExternalPackage_alef \
+-	ExternalPackage_amiri \
+-	ExternalPackage_caladea \
+-	ExternalPackage_carlito \
+-	$(if $(MPL_SUBSET),,ExternalPackage_culmus) \
+-	ExternalPackage_dejavu \
+-	ExternalPackage_gentium \
+-	ExternalPackage_liberation \
+-	ExternalPackage_liberation_narrow \
+-	ExternalPackage_libertineg \
+-	ExternalPackage_libre_hebrew \
+-	ExternalPackage_noto_kufi_arabic \
+-	ExternalPackage_noto_naskh_arabic \
+-	ExternalPackage_noto_sans \
+-	ExternalPackage_noto_sans_arabic \
+-	ExternalPackage_noto_sans_armenian \
+-	ExternalPackage_noto_sans_georgian \
+-	ExternalPackage_noto_sans_hebrew \
+-	ExternalPackage_noto_sans_lao \
+-	ExternalPackage_noto_sans_lisu \
+-	ExternalPackage_noto_serif \
+-	ExternalPackage_noto_serif_armenian \
+-	ExternalPackage_noto_serif_georgian \
+-	ExternalPackage_noto_serif_hebrew \
+-	ExternalPackage_noto_serif_lao \
+-	ExternalPackage_reem \
+-	ExternalPackage_scheherazade \
+-	$(if $(WITH_DOCREPAIR_FONTS),ExternalPackage_agdasima,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),ExternalPackage_bacasime_antique,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),ExternalPackage_belanosima,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),ExternalPackage_caprasimo,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),ExternalPackage_lugrasimo,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),ExternalPackage_lumanosimo,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),ExternalPackage_lunasima,) \
+-	UnpackedTarball_alef \
+-	UnpackedTarball_amiri \
+-	UnpackedTarball_caladea \
+-	UnpackedTarball_carlito \
+-	$(if $(MPL_SUBSET),,UnpackedTarball_culmus) \
+-	UnpackedTarball_dejavu \
+-	UnpackedTarball_gentium \
+-	UnpackedTarball_liberation \
+-	UnpackedTarball_liberation_narrow \
+-	UnpackedTarball_libertineg \
+-	UnpackedTarball_libre_hebrew \
+-	UnpackedTarball_noto_kufi_arabic \
+-	UnpackedTarball_noto_naskh_arabic \
+-	UnpackedTarball_noto_sans \
+-	UnpackedTarball_noto_sans_arabic \
+-	UnpackedTarball_noto_sans_armenian \
+-	UnpackedTarball_noto_sans_georgian \
+-	UnpackedTarball_noto_sans_hebrew \
+-	UnpackedTarball_noto_sans_lao \
+-	UnpackedTarball_noto_sans_lisu \
+-	UnpackedTarball_noto_serif \
+-	UnpackedTarball_noto_serif_armenian \
+-	UnpackedTarball_noto_serif_georgian \
+-	UnpackedTarball_noto_serif_hebrew \
+-	UnpackedTarball_noto_serif_lao \
+-	UnpackedTarball_reem \
+-	UnpackedTarball_scheherazade \
+-	$(if $(WITH_DOCREPAIR_FONTS),UnpackedTarball_agdasima,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),UnpackedTarball_bacasime_antique,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),UnpackedTarball_belanosima,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),UnpackedTarball_caprasimo,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),UnpackedTarball_lugrasimo,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),UnpackedTarball_lumanosimo,) \
+-	$(if $(WITH_DOCREPAIR_FONTS),UnpackedTarball_lunasima,) \
+-))
++$(eval $(call gb_Module_add_targets,more_fonts))
+ 
+ # vim: set noet sw=4 ts=4:
