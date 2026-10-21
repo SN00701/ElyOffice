@@ -13,7 +13,7 @@ pub fn data_dir(app: AppId) -> Result<PathBuf> {
 /// The suite's folder: each app's, and the shared settings.
 pub(crate) fn root() -> Result<PathBuf> {
     let base = BaseDirs::new().context("no home directory")?;
-    Ok(base.data_local_dir().join("ElyOffice"))
+    Ok(base.data_local_dir().join("MPelyoffice"))
 }
 
 /// Omarchy's active theme directory; `ELY_OMARCHY_DIR` overrides it.
@@ -37,12 +37,12 @@ mod tests {
     use crate::AppId;
 
     #[test]
-    fn each_app_has_its_own_directory_under_elyoffice() {
+    fn each_app_has_its_own_directory_under_mpelyoffice() {
         let doc = data_dir(AppId::Doc).unwrap();
         let mail = data_dir(AppId::Mail).unwrap();
 
-        assert!(doc.ends_with("ElyOffice/ely-doc"), "{}", doc.display());
-        assert!(mail.ends_with("ElyOffice/ely-mail"), "{}", mail.display());
+        assert!(doc.ends_with("MPelyoffice/ely-doc"), "{}", doc.display());
+        assert!(mail.ends_with("MPelyoffice/ely-mail"), "{}", mail.display());
         assert_ne!(doc, mail);
     }
 

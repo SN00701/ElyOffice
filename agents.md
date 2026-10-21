@@ -198,7 +198,7 @@ cargo run -p ely-doc          启动一个应用（ElyDoc 先 cargo build -p ely
 
 | 层 | 内容 |
 | --- | --- |
-| 外壳 | `apps/mpelyoffice`：功能区（`shell::Toolbar` + `ToolbarGroup`）、混排标签栏（`navigation::EditorTabs`）、开始页、状态栏、自建菜单（只列已实现的命令） |
+| 外壳 | `apps/mpelyoffice`：功能区（`shell::Toolbar` + `ToolbarGroup`）、混排标签栏（`navigation::EditorTabs`）、开始页（`apps/mpelyoffice/src/home.rs`：最近/星标/本地位置、搜索、新建选型、拖放即开）、状态栏、自建菜单（只列已实现的命令） |
 | 引擎 | `crates/ely-engine`：`EngineDyn`（对象安全）、`Registry`（扩展名 → 引擎 + 冲突检测）、`CommandSpec`、`encoding`（UTF-8/UTF-8+BOM/UTF-16LE/GB18030 往返）、`TextEngine`（文本与 Markdown）、`contract`（引擎契约测试） |
 | 文档 | 标签内的文档视图由引擎给出（`AnyView`）；尚无引擎的格式先占位并提供"用模块应用打开"（`apps/mpelyoffice/src/placeholder.rs`） |
 | 文件 | 写前比对指纹以免覆盖外部修改，临时文件唯一命名；外部修改与未保存关闭都有守卫 |
@@ -226,6 +226,7 @@ packaging/icons/mpelyoffice.py          写出 assets/icons/mpelyoffice.ico
 4. **文档归用户**：卸载只动程序目录与本应用的数据目录，不碰用户文档。
 5. **数据完整性优先**：原子写（临时文件 + 替换）、外部修改不覆盖、BOM 与编码保真、关闭与关闭标签前询问未保存。
 6. **诚实**：未实现的能力在状态栏与支持矩阵里写明，不做假动作。
+7. **开始页即入口**：无标签时显示开始页（`apps/mpelyoffice/src/home.rs`）：最近与星标读数据目录里的 `recent.json` / `starred.json`，「＋新建」出选型表（六类），拖入文件按扩展名自动认类型并打开。页上的控件用组件库（`Button`、`forms::TextInput`、`layout::ScrollArea`），不自己画。
 
 命令：
 
@@ -233,6 +234,7 @@ packaging/icons/mpelyoffice.py          写出 assets/icons/mpelyoffice.ico
 cargo build -p mpelyoffice          统一外壳
 cargo test -p mpelyoffice           外壳与文件读写的单测
 cargo run -p mpelyoffice -- 文件    打开一个文件
+packaging/windows/stage.ps1 -TargetDir F:\mpely-office-dist   组分发包（带许可清单与逐文件散列）
 scripts/build-libreoffice-win.sh    Windows（Cygwin）上构建带 LOK 补丁的 LibreOffice
 packaging/icons/mpelyoffice.py      写出 assets/icons/mpelyoffice.ico
 ```
@@ -252,7 +254,7 @@ packaging/icons/mpelyoffice.py      写出 assets/icons/mpelyoffice.ico
 - 2026-10-04：ElyTable 公式、计算、名称（C09.2，TABLE-03 至 06）。公式语法为 Excel A1（用户定）：`Sheet2!A1`、逗号分隔参数，由安装层 `packaging/libreoffice/ely.xcd` 设定；载入选项 `Language=en-US,DeviceFormFactor=desktop`，内核界面与数字区域都是 en-US（小数点、月/日/年输入）。单元格内编辑由内核完成：键入时内核给出匹配的函数（`editor::CompletionMenu` 显示在单元格下，上下键选，Tab 补全，经 `completeFunction` 入有序队列），参数提示（`editor::SignatureHelp`，取内核的用法文字），点选单元格插入引用并按内核颜色画框；内核只为点选的引用与再次编辑（F2）的已有公式画框，新键入的引用不画（同桌面版）。第一下 Esc 关提示，第二下取消（同内核）。语法错误的公式照原样输入，状态栏按界面语言解释当前格的错误（内核英文错误串换成界面文案，同统计）；循环引用同此提示。“公式”菜单：自动计算开关（关时状态栏显示手动计算）、重新计算、全部重新计算、定义名称（名称、引用位置默认为所选区域的绝对引用、范围为工作簿或某表；名称先经内核判定）、名称列表（改引用、转到所命名的绝对区域、删除，失效引用标出；内核给出每个名称的区域，`.uno:SelectedRange` 给所选区域）、追踪错误、追踪引用与从属单元格、移去箭头。名称框可直接输入名称跳转，跳转后显示该名称。手动计算在 ods、xlsx、xls、fods 存后重开都保持。
 - 2026-10-04：ElyTable 格式、数据整理、规则（C09.3，TABLE-07 至 09）。补丁 `0016-lok-calc-formats-and-conditions.patch`（数字格式、条件格式、两处 sdi 参数）、`0017-lok-calc-filter-validation-columns.patch`（筛选、验证、分列）、`0018-lok-calc-reads-requests-search.patch`（读值、请求、查找全部）：数字格式按代码设（`.uno:NumberFormat` 的 `FormatCode`），`.uno:NumberFormatCode` 读当前格代码与类别（常规按区域块首判定）或校验代码；标准筛选收 JSON 条件（`.uno:DataFilterStandardFilter` 的 `Query`，含按列取值），`.uno:AutoFilterValues` 照内核自己的筛选菜单给出条目、他列隐藏与本列勾选；数据验证收 JSON 规则（`.uno:Validation` 的 `Rule`），`.uno:Validation` 读当前格规则，`.uno:DataSelectValues` 给序列；条件格式收 JSON（单元格规则配内核单元格样式、色阶、数据条、按键删除，`cellsh.sdi` 的同名槽也加参数），`.uno:ConditionalFormats` 列出本表；分列收 `Options`（ScAsciiOptions 串）；`.uno:SelectedRange` 另给所选区域内数据区的四角、首行文字与内核的标题判定。LOK 下内核不再弹自己的筛选菜单与序列下拉，改发 `LOK_CALLBACK_TOOLTIP`（`autofilter`、`datalist`，带列行），无效输入发 `validityerror`（标题、内容、样式、是否接受；接受与否取内核对话框的默认：信息接受，警告与停止拒绝），Ely 以 `ely_lok::Request` 接收后自建菜单与提示。查找全部按格报矩形（内核原把相邻命中并成一块，计数偏少）。查找替换移入 `ely-office`（`Finding`，ElyDoc 与 ElyTable 共用，`Host::search_leaves` 供 ElyDoc 记返回位置）。“粘贴为值/公式”只在系统剪贴板仍是本视图上次的复制时进行（内核自己的单元格剪贴板；Ely 复制的 HTML 末尾带一个进程内唯一的标记注释，以标记而不是文字识别，同样文字的外来复制不算）；其他内容（含别的工作簿复制的单元格）明确拒绝并提示改用粘贴：内核无法从外来内容单取值或公式。排序最多三个关键字（内核限制）。右侧格式面板（数字、对齐、边框、填充）、“数据”菜单（排序、筛选、删除重复项、分列、查找替换、粘贴为值或公式、数据验证）、“格式”菜单（格式面板开关、条件格式）。组件库 `SortBuilder`、`FilterBuilder` 的文案 a4bf696 起接 i18n（原为英文）。
 - 2026-10-04：右侧属性栏宽取 `theme.sheet_size()`（380），左栏仍是 `sidebar_width`。`PropertyGrid` 名称列固定 120，240 宽时编辑器只剩约 76。颜色经色块弹出 `ColorPalette`，一次点击一条命令。
-- 2026-10-01：每个应用的全部数据在 `<本机数据目录>/ElyOffice/<slug>/`，路径由 `ely_platform::data_dir` 给出。卸载只动这里，且先问。用户文档永不碰。
+- 2026-10-01：每个应用的全部数据在 `<本机数据目录>/ElyOffice/<slug>/`，路径由 `ely_platform::data_dir` 给出。卸载只动这里，且先问。用户文档永不碰。2026-10-21 起本 fork 的数据根改为 `<本机数据目录>/MPelyoffice/`（`crates/ely-platform/src/dirs.rs`；MPelyoffice 自己的一层是 `mpelyoffice/`），旧的 `ElyOffice/` 目录不再读也不再删。
 - 2026-10-04（用户定）：macOS 包标识前缀 `ely.zacharyzhang.office`（`packaging/macos/bundle.sh`）；发布者 ZacharyZhang，网址 zacharyzhang.com（macOS `NSHumanReadableCopyright`，Windows 卸载项 `Publisher` 与 `URLInfoAbout`；Linux 桌面文件无此字段）。界面语言英文与简体中文，以后再加。拼写词典只随英文：LibreOffice 的词典库没有中文（中文不用 Hunspell 拼写）。内核界面语言固定英文，函数名照英文；ElyTable 把内核英文的选区统计（Sum、Average 等七个固定名）换成界面语言，数值照内核。批注与修订的作者取各用户的账户全名（无全名用登录名，与内核自身次序一致），由补丁 0013 的 `setOption("author")` 在 worker 启动时设定；作者设置页随设置任务接入。邮件合并字段写法 `«列名»` 由我定（用户交我决定）。
 - 2026-10-01：更新清单是 JSON：`{"version", "assets": {"<os>-<arch>": {"url", "sha256"}}}`，只走 https（本机回环除外）。检查、下载、校验在 `ely_platform::update`，从不静默安装。包管理器安装的 Linux 版本不自更新。2026-10-09 起（用户定：0.1.2 加自动更新）：每个应用一份清单，`<slug>.json`，随发布上传，应用经 git.zacharyzhang.com 的 API 读最新发布（`api/v1/repos/ZacharyZhang-NY/ElyOffice/releases/latest`），在其文件里找 `<slug>.json`（`ely_platform::release::asset_url`；Gitea 没有 `releases/latest/download` 路径；`ELY_UPDATE_MANIFEST` 直接给清单地址，测试用）；只在从 `.app` 运行时可用（开发构建没有）；照 PRD §4.2 自动检查默认关闭：设置“通用”的“启动时检查更新”（通用设置 `check_updates`）打开后启动时查一次、查不到只记日志，应用菜单的“检查更新…”随时手动查（已是最新或查不到都以提示写明）；有新版即在窗口上方显示组件库的 `UpdateBanner`（文案进内建中英目录，组件库 5d6efd4）：横幅在标题栏下方（`Shell` 的页眉里，`Updates` 自己是一个视图）；下载（进度）、校验散列、“重新启动以更新”只走正常的退出流程（有未保存的照常询问；取消即什么也不装，按钮仍在）；应用真正退出时（`on_app_quit`）以本程序的安装模式（`--ely-install-update dmg 包 进程号`，`ely_ui::run` 最先识别）起一个独立进程：等本进程结束，`ely_platform::install` 挂载 dmg、把同名 .app 拷到旁边再换掉原包（换上前失败即放回原包），无论成败都 `open` 该包；失败的原因写在数据目录 `updates/failed.txt`，重开的应用以提示写明。下载完成只归属于它下载的那个版本；下载中或已下载时再查不覆盖。`packaging/macos/release.sh` 为每个应用写出清单（版本、本机架构的 dmg 地址与 SHA-256），dmg 里另有指向“应用程序”的替身，可直接拖入。新包换上即为装好，旧副本删不掉只记警告。`tests/scripts/update.sh`：装好的 ElyMark 在默认设置下启动不发任何请求；按“检查更新…”后从本机服务的 9.9.9 下载；有未保存的文字时“重新启动以更新”先问，取消则原包不动，“不保存”后装上新版并重新打开（新版本身的进程在跑）。
 - 2026-10-05（用户定）：ElyAgent 的后端与内置模型的登录配置以 Kigi CLI（https://git.zacharyzhang.com/ZacharyZhang-NY/Kigi-CLI，Rust）为基础，以 Rust 依赖直接嵌入，不用 ACP；沿用其提供商登录（订阅账号或 API 密钥）与模型配置。

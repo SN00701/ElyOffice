@@ -149,6 +149,11 @@ fn copy_tree(from: &Path, to: &Path, installed: &mut Vec<String>) -> anyhow::Res
         }
         let source = entry.path();
         let target = to.join(name.as_ref());
+        // The installer does not install itself, whatever it is called.
+        let lower = name.to_ascii_lowercase();
+        if lower.starts_with("mpelyoffice-setup") {
+            continue;
+        }
         if source.is_dir() {
             std::fs::create_dir_all(&target)?;
             let mut deeper = Vec::new();
@@ -295,6 +300,19 @@ fn uninstall(options: &Options) -> anyhow::Result<()> {
         folders.dedup();
         for folder in folders {
             // Only an empty folder goes; a folder of the user's own stays.
+            let _ = std::fs::remove_dir(&folder);
+        }
+        // A folder that was empty in the package is empty here too.
+        let mut left: Vec<PathBuf> = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    left.push(entry.path());
+                }
+            }
+        }
+        left.sort_by_key(|path| std::cmp::Reverse(path.components().count()));
+        for folder in left {
             let _ = std::fs::remove_dir(&folder);
         }
     }

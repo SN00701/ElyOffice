@@ -2038,6 +2038,7 @@ dependencies = [
  "ely-lok",
  "ely-platform",
  "encoding_rs",
+ "futures",
  "gpui-pre",
  "image",
  "log",
