@@ -1,4 +1,9 @@
 //! The LibreOfficeKit engine: the document kinds LibreOffice reads.
+//!
+//! Opening a document takes long enough to be felt, so the kernel is
+//! asked away from the interface thread. The window gets a placeholder
+//! right away, and the placeholder shows the document itself once the
+//! kernel is through.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -6,7 +11,11 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::bail;
 use ely_lok::{Doc, LokView, Worker};
-use gpui::{App, AppContext};
+use futures::channel::oneshot;
+use gpui::{
+    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled,
+    Window, div,
+};
 
 use crate::engine::{CommandSpec, DocId, EngineKind, Opened, Source};
 use crate::EngineDyn;
@@ -21,12 +30,53 @@ pub struct LokEngine {
 
 /// What the engine knows about an open document.
 struct LokDoc {
-    doc: Doc,
+    /// The document, once the kernel has it.
+    doc: Option<Doc>,
     path: PathBuf,
     /// The format it is written back in: the extension it came with.
     format: String,
     /// The history mark of the last write.
     mark: String,
+    /// The placeholder that will show the document.
+    placeholder: Entity<Loading>,
+}
+
+/// What a finished load brings.
+struct Ready {
+    doc: Doc,
+    laid: ely_lok::Layout,
+    mark: String,
+}
+
+/// The view shown while a document is still loading.
+pub struct Loading {
+    name: SharedString,
+    /// The document itself, once it is there.
+    inner: Option<Entity<LokView>>,
+    /// Why the document did not open, when it did not.
+    reason: Option<SharedString>,
+}
+
+impl Render for Loading {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        match (&self.inner, &self.reason) {
+            (Some(view), _) => view.clone().into_any_element(),
+            (None, Some(reason)) => div()
+                .size_full()
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(div().text_sm().child(reason.clone()))
+                .into_any_element(),
+            (None, None) => div()
+                .size_full()
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(div().text_sm().child(format!("正在打开 {} …", self.name)))
+                .into_any_element(),
+        }
+    }
 }
 
 impl LokEngine {
@@ -77,39 +127,75 @@ impl EngineDyn for LokEngine {
             .map(|extension| extension.to_ascii_lowercase())
             .ok_or_else(|| anyhow::anyhow!("the file has no extension"))?;
         let url = ely_lok::file_url(&path);
-        // The kernel loads, measures and reports its history.
-        let (doc, laid, mark) = {
-            // A worker that died leaves its lock poisoned; that is an error
-            // to report, not a reason to bring the window down.
-            let mut worker = self
-                .worker
-                .lock()
-                .map_err(|_| anyhow::anyhow!("the document engine is not usable"))?;
-            let doc = worker.unlock(&url, "")?;
-            let laid = ely_lok::layout(&mut worker, &doc)?;
-            let mark = worker.values(&doc, ".uno:Undo")?;
-            (doc, laid, mark)
-        };
-        // The view makes itself; it is an entity already.
-        let view = LokView::open(Arc::clone(&self.worker), doc.clone(), laid, cx);
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.display().to_string());
+        // The kernel loads and measures the document away from the window.
+        let (sender, receiver) = oneshot::channel();
+        let worker = Arc::clone(&self.worker);
+        cx.background_executor()
+            .spawn(async move {
+                let found = worker
+                    .lock()
+                    .ok()
+                    .and_then(|mut worker| {
+                        let doc = worker.unlock(&url, "").ok()?;
+                        let laid = ely_lok::layout(&mut worker, &doc).ok()?;
+                        let mark = worker.values(&doc, ".uno:Undo").ok()?;
+                        Some(Ready { doc, laid, mark })
+                    });
+                let _ = sender.send(found);
+            })
+            .detach();
+
+        // The window shows a placeholder right away.
+        let shown = name.clone();
+        let placeholder = cx.new(|cx| Loading {
+            name: shown.into(),
+            inner: None,
+            reason: None,
+        });
+
+        // When the kernel is through, the placeholder shows the document.
+        let worker = Arc::clone(&self.worker);
+        let place = placeholder.clone();
+        cx.spawn(async move |cx: &mut gpui::AsyncApp| {
+            let found = receiver.await.unwrap_or(None);
+            cx.update(|app| match found {
+                Some(found) => {
+                    let view = LokView::open(worker, found.doc.clone(), found.laid, app);
+                    place.update(app, |loading, cx| {
+                        loading.inner = Some(view);
+                        cx.notify();
+                    });
+                }
+                None => {
+                    log::error!("lok: the document did not open");
+                    place.update(app, |loading, cx| {
+                        loading.reason = Some("这个文档没有打开。".into());
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
         let id = self.next;
         self.next += 1;
         self.documents.insert(
             id,
             LokDoc {
-                doc,
+                doc: None,
                 path: path.clone(),
                 format,
-                mark,
+                mark: String::new(),
+                placeholder: placeholder.clone(),
             },
         );
-        let name = path
-            .file_name()
-            .map(|name| name.to_string_lossy().to_string())
-            .unwrap_or_else(|| path.display().to_string());
         Ok(Opened {
             id,
-            view: view.into(),
+            view: placeholder.clone().into(),
             name: name.into(),
         })
     }
@@ -122,20 +208,23 @@ impl EngineDyn for LokEngine {
 
     fn text(&self, id: DocId, _cx: &App) -> Option<String> {
         let document = self.documents.get(&id)?;
-        // The text of a document is its own; the shell asks the kernel.
+        let doc = document.doc.as_ref()?;
         let mut worker = self.worker.lock().ok()?;
-        worker.values(&document.doc, ".uno:Modified").ok()
+        worker.values(doc, ".uno:Modified").ok()
     }
 
     fn modified(&self, id: DocId, _cx: &App) -> bool {
         let Some(document) = self.documents.get(&id) else {
             return false;
         };
+        let Some(doc) = document.doc.as_ref() else {
+            return false;
+        };
         let Ok(mut worker) = self.worker.lock() else {
             return false;
         };
         // The kernel's history mark moves when the document changes.
-        match worker.values(&document.doc, ".uno:Undo") {
+        match worker.values(doc, ".uno:Undo") {
             Ok(mark) => mark != document.mark,
             Err(_) => false,
         }
@@ -158,16 +247,20 @@ impl EngineDyn for LokEngine {
         let Some(document) = self.documents.get(&id) else {
             bail!("the document is not open");
         };
+        let Some(doc) = document.doc.clone() else {
+            bail!("the document is still loading");
+        };
         let format = document.format.clone();
         let url = ely_lok::file_url(path);
         let mut worker = self
             .worker
             .lock()
             .map_err(|_| anyhow::anyhow!("the document engine is not usable"))?;
-        document.doc.save_owned(&mut worker, &url, &format)?;
+        doc.save_owned(&mut worker, &url, &format)?;
+        let mark = worker.values(&doc, ".uno:Undo")?;
         if let Some(document) = self.documents.get_mut(&id) {
             document.path = path.to_path_buf();
-            document.mark = worker.values(&document.doc, ".uno:Undo")?;
+            document.mark = mark;
         }
         Ok(())
     }
@@ -178,9 +271,18 @@ impl EngineDyn for LokEngine {
 
     fn close(&mut self, id: DocId) {
         if let Some(document) = self.documents.remove(&id) {
-            if let Ok(mut worker) = self.worker.lock() {
-                let _ = worker.close_doc(document.doc);
+            if let Some(doc) = document.doc {
+                if let Ok(mut worker) = self.worker.lock() {
+                    let _ = worker.close_doc(doc);
+                }
             }
         }
+    }
+
+    fn is_loading(&self, id: DocId) -> bool {
+        self.documents
+            .get(&id)
+            .map(|document| document.doc.is_none())
+            .unwrap_or(false)
     }
 }

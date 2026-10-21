@@ -75,6 +75,14 @@ pub trait EngineDyn: 'static {
 
     /// Closes the document and lets the engine drop it.
     fn close(&mut self, id: DocId);
+
+    /// Whether the document is still being loaded.
+    ///
+    /// An engine that takes long to open a document says so here; the
+    /// window shows a placeholder until the document is there.
+    fn is_loading(&self, _id: DocId) -> bool {
+        false
+    }
 }
 
 /// The view of a document, as the shell puts it in a tab.

@@ -12,6 +12,7 @@ ely-gpui-component.workspace = true
 ely-lok = { workspace = true, features = ["view"] }
 ely-platform.workspace = true
 encoding_rs.workspace = true
+futures.workspace = true
 gpui.workspace = true
 image.workspace = true
 log.workspace = true

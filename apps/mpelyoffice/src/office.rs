@@ -472,6 +472,18 @@ impl Office {
             None => ely_ui::i18n::text(cx, "mpelyoffice.status.none", &[]),
             Some(tab) => {
                 let index = self.active.unwrap_or_default();
+                // A document that is still opening says so.
+                let loading = tab
+                    .doc
+                    .and_then(|document| {
+                        self.engines
+                            .get(tab.kind.id)
+                            .map(|engine| engine.is_loading(document))
+                    })
+                    .unwrap_or(false);
+                if loading {
+                    ely_ui::i18n::text(cx, "mpelyoffice.status.loading", &[])
+                } else {
                 let changed = if self.changed(index, cx) {
                     ely_ui::i18n::text(cx, "mpelyoffice.status.modified", &[]).to_string()
                 } else {
@@ -501,6 +513,7 @@ impl Office {
                         ("where", &where_),
                     ],
                 )
+                }
             }
         };
         let count = ely_ui::i18n::text(
