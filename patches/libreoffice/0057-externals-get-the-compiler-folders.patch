@@ -1,0 +1,16 @@
+The external packages are built by programs that do not know where the
+folders of the compiler are.  The build knows, and gives them the folders of the
+compiler and the libraries.
+
+diff --git a/solenv/gbuild/ExternalProject.mk b/solenv/gbuild/ExternalProject.mk
+index 093b99e96..5d77571d3 100644
+--- a/solenv/gbuild/ExternalProject.mk
++++ b/solenv/gbuild/ExternalProject.mk
+@@ -231,6 +231,7 @@ $(call gb_Helper_print_on_error,cd $(EXTERNAL_WORKDIR)/$(3) && \
+ 	$(if $(WRAPPERS),export $(WRAPPERS) &&) \
+ 	$(if $(NMAKE),export $(NMAKE) &&) \
+ 	$(if $(gb_COMPILER_SETUP),export $(gb_COMPILER_SETUP) &&) \
++	$(if $(gb_ExternalProject_INCLUDE),export INCLUDE="$(gb_ExternalProject_INCLUDE)" LIB="$(ILIB)" &&) \
+ 	$(2) && touch $@,$(EXTERNAL_WORKDIR)/$(if $(3),$(3)/,)$(if $(4),$(4),$(1).log))
+ )
+ endef
