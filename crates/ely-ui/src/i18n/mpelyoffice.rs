@@ -38,6 +38,10 @@ pub(super) const EN: &[(&str, &str)] = &[
     ("mpelyoffice.notice.failed", "The save failed: {error}"),
     ("mpelyoffice.notice.no_name", "This document has no file name yet; save it first"),
     (
+        "mpelyoffice.notice.truncated",
+        "This file is too big; only the beginning of it was read",
+    ),
+    (
         "mpelyoffice.command.not_ready",
         "This command needs the document engine; it is not in the window yet",
     ),
@@ -105,6 +109,7 @@ pub(super) const ZH_CN: &[(&str, &str)] = &[
     ("mpelyoffice.notice.external", "{name} 已被外部修改，未覆盖"),
     ("mpelyoffice.notice.failed", "保存失败：{error}"),
     ("mpelyoffice.notice.no_name", "这个文档还没有文件名，请先另存为"),
+    ("mpelyoffice.notice.truncated", "这个文件太大，只读了开头的一部分"),
     (
         "mpelyoffice.command.not_ready",
         "这个命令需要文档内核，尚未接入本窗口",

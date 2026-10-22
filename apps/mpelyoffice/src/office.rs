@@ -223,6 +223,19 @@ impl Office {
             path,
         });
         self.active = Some(self.tabs.len() - 1);
+        // A file too big to be read whole says so, rather than let the
+        // reader believe the whole file is there.
+        if let Some(doc) = doc {
+            let truncated = self
+                .engines
+                .get(kind.id)
+                .map(|engine| engine.truncated(doc))
+                .unwrap_or(false);
+            if truncated {
+                self.notice =
+                    Some(ely_ui::i18n::text(cx, "mpelyoffice.notice.truncated", &[]).into());
+            }
+        }
         cx.notify();
     }
 

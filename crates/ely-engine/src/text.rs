@@ -29,6 +29,8 @@ struct Document {
     fingerprint: Fingerprint,
     /// How the file is read and written.
     encoding: Encoding,
+    /// Whether the file was too big and only its beginning was read.
+    truncated: bool,
 }
 
 impl TextEngine {
@@ -92,6 +94,7 @@ impl EngineDyn for TextEngine {
                     .unwrap_or_else(|| path.display().to_string())
             })
             .unwrap_or_else(|| self.kind.default_extension.to_string());
+        let truncated = loaded.truncated;
         let view = cx.new(|cx| TextView::new(loaded.text.clone(), cx));
         let id = self.next;
         self.next += 1;
@@ -103,6 +106,7 @@ impl EngineDyn for TextEngine {
                 saved: view.read(cx).revision(),
                 fingerprint: loaded.fingerprint,
                 encoding: loaded.encoding,
+                truncated,
             },
         );
         Ok(Opened {
@@ -154,6 +158,13 @@ impl EngineDyn for TextEngine {
         doc.fingerprint = encoding::fingerprint(path).unwrap_or(doc.fingerprint);
         doc.saved = doc.view.read(cx).revision();
         Ok(())
+    }
+
+    fn truncated(&self, id: DocId) -> bool {
+        self.documents
+            .get(&id)
+            .map(|document| document.truncated)
+            .unwrap_or(false)
     }
 
     fn encoding(&self, id: DocId) -> Option<Encoding> {

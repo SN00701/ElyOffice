@@ -73,6 +73,14 @@ pub trait EngineDyn: 'static {
     /// The encoding the file is read and written in.
     fn encoding(&self, id: DocId) -> Option<Encoding>;
 
+    /// Whether the file was too big and only its beginning was read.
+    ///
+    /// The window says so rather than let the reader believe the whole file
+    /// is there.
+    fn truncated(&self, _id: DocId) -> bool {
+        false
+    }
+
     /// Closes the document and lets the engine drop it.
     fn close(&mut self, id: DocId, cx: &App);
 
