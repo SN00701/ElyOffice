@@ -1,8 +1,7 @@
-Three parts of the kernel want the headers of the Active Template
-Library, which are a part of Visual Studio that this machine does not have and
-that cannot be written to.  The parts are the embedding of objects, the bridge to the
-automation of Windows, and the accessibility of Windows; the kernel of
-the documents needs none of them.
+Two parts of the kernel want the headers of the Active Template Library,
+which are a part of Visual Studio that this machine does not have and that cannot
+be written to.  The parts are the embedding of objects and the accessibility of
+Windows; the kernel of the documents needs neither.
 
 diff --git a/embedserv/Module_embedserv.mk b/embedserv/Module_embedserv.mk
 index 505efa5c4..be8ffa2c4 100644
@@ -16,24 +15,6 @@ index 505efa5c4..be8ffa2c4 100644
  	Library_inprocserv \
  ))
  
-diff --git a/extensions/Module_extensions.mk b/extensions/Module_extensions.mk
-index cfd7cda7d..4452ca744 100644
---- a/extensions/Module_extensions.mk
-+++ b/extensions/Module_extensions.mk
-@@ -78,10 +78,10 @@ endif
- ifeq ($(OS),WNT)
- 
- ifeq ($(COM),MSC)
-+# The ActiveX part of the extensions needs the headers of the Active
-+# Template Library, which are a part of Visual Studio that a machine may
-+# not have.  The part is left out rather than fail the build over it.
- $(eval $(call gb_Module_add_targets,extensions,\
--	WinResTarget_activex \
--	Library_so_activex \
--	CustomTarget_so_activex_idl \
- ))
- 
- endif # COM=MSC
 diff --git a/winaccessibility/Module_winaccessibility.mk b/winaccessibility/Module_winaccessibility.mk
 index 2421164b3..8846ffb83 100644
 --- a/winaccessibility/Module_winaccessibility.mk

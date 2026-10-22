@@ -1,7 +1,3 @@
-The ActiveX part of the extensions needs the headers of the Active
-Template Library, which are a part of Visual Studio that a machine may not have.
-The part is left out rather than have the build fail over it.
-
 diff --git a/extensions/Module_extensions.mk b/extensions/Module_extensions.mk
 index cfd7cda7d..4452ca744 100644
 --- a/extensions/Module_extensions.mk

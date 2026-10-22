@@ -1,0 +1,16 @@
+The bridge to the automation of Windows wants the headers of the Active
+Template Library, which are a part of Visual Studio that this machine does not have.
+The kernel of the documents needs it not.
+
+diff --git a/extensions/Module_extensions.mk b/extensions/Module_extensions.mk
+index 4452ca744..2239740d1 100644
+--- a/extensions/Module_extensions.mk
++++ b/extensions/Module_extensions.mk
+@@ -87,7 +87,6 @@ $(eval $(call gb_Module_add_targets,extensions,\
+ endif # COM=MSC
+ 
+ $(eval $(call gb_Module_add_targets,extensions,\
+-	Library_oleautobridge \
+ ))
+ 
+ # $(eval $(call gb_Module_add_subsequentcheck_targets,extensions,\
