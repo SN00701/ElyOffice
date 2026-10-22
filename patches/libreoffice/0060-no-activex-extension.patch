@@ -1,0 +1,22 @@
+The ActiveX part of the extensions needs the headers of the Active
+Template Library, which are a part of Visual Studio that a machine may not have.
+The part is left out rather than have the build fail over it.
+
+diff --git a/extensions/Module_extensions.mk b/extensions/Module_extensions.mk
+index cfd7cda7d..4452ca744 100644
+--- a/extensions/Module_extensions.mk
++++ b/extensions/Module_extensions.mk
+@@ -78,10 +78,10 @@ endif
+ ifeq ($(OS),WNT)
+ 
+ ifeq ($(COM),MSC)
++# The ActiveX part of the extensions needs the headers of the Active
++# Template Library, which are a part of Visual Studio that a machine may
++# not have.  The part is left out rather than fail the build over it.
+ $(eval $(call gb_Module_add_targets,extensions,\
+-	WinResTarget_activex \
+-	Library_so_activex \
+-	CustomTarget_so_activex_idl \
+ ))
+ 
+ endif # COM=MSC
