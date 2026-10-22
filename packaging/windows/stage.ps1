@@ -56,9 +56,13 @@ if (Test-Path $pdfium) {
 }
 if (Test-Path $LokDir) {
     $program = Join-Path $LokDir 'program'
-    if (Test-Path $program) {
+    # The kernel is only there when the build has got far enough to make it.
+    $kernel = Join-Path $program 'mergedlo.dll'
+    if (Test-Path $kernel) {
         Copy-Item $program (Join-Path $engines 'lo') -Recurse -Force
         Say 'the document engine is in place'
+    } else {
+        Say 'the document engine is not built yet (the kernel is not in the program folder)'
     }
 } else {
     Say 'the document engine is not built yet'
