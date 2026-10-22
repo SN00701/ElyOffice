@@ -6,7 +6,7 @@ them.  They are built without sources, so that what is delivered is still
 there.
 
 diff --git a/embedserv/Library_emser.mk b/embedserv/Library_emser.mk
-index d80d63d0c..193aac62d 100644
+index d80d63d0c..1953e4086 100644
 --- a/embedserv/Library_emser.mk
 +++ b/embedserv/Library_emser.mk
 @@ -10,11 +10,9 @@
@@ -21,6 +21,30 @@ index d80d63d0c..193aac62d 100644
  	$$(INCLUDE) \
  ))
  
+@@ -44,23 +42,7 @@ $(eval $(call gb_Library_add_libs,emser,\
+ 	$(ATL_LIB)/atls.lib \
+ ))
+ 
+-$(eval $(call gb_Library_add_ldflags,emser,\
+-	-LIBPATH:$(ATL_LIB) \
+ ))
+ 
+-$(eval $(call gb_Library_add_exception_objects,emser,\
+-	embedserv/source/embed/docholder \
+-	embedserv/source/embed/ed_idataobj \
+-	embedserv/source/embed/ed_iinplace \
+-	embedserv/source/embed/ed_ioleobject \
+-	embedserv/source/embed/ed_ipersiststr \
+-	embedserv/source/embed/esdll \
+-	embedserv/source/embed/guid \
+-	embedserv/source/embed/iipaobj \
+-	embedserv/source/embed/intercept \
+-	embedserv/source/embed/servprov \
+-	embedserv/source/embed/syswinwrapper \
+-	embedserv/source/embed/tracker \
+-))
+ 
+ # vim: set noet sw=4 ts=4:
 diff --git a/winaccessibility/Library_uacccom.mk b/winaccessibility/Library_uacccom.mk
 index c240338f6..682467b78 100644
 --- a/winaccessibility/Library_uacccom.mk
