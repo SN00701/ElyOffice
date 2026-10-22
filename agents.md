@@ -213,6 +213,8 @@ apps/mpelyoffice-setup                  per-user 安装器
 tests/scripts/mp-association.ps1        关联验收（默认未被夺、卸载洁净）
 tests/scripts/mp-single-instance.ps1    单实例交接验收
 tests/scripts/mp-install.ps1            安装与卸载验收
+tests/scripts/mp-lok-roundtrip.ps1      内核真的读得开文档
+tests/scripts/mp-perf.ps1              性能（起到窗口、内存、空闲时的计算）
 scripts/build-libreoffice-win.sh        Windows（Cygwin）构建带 LOK 补丁的 LibreOffice
 scripts/build-lo-win-run.sh             以干净环境跑上面那个
 scripts/fetch-lo-tarballs.sh            并行取 LO 的外部依赖（单连接太慢）
