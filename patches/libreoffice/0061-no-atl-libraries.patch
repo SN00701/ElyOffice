@@ -1,32 +1,103 @@
-Two parts of the kernel want the headers of the Active Template Library,
-which are a part of Visual Studio that this machine does not have and that cannot
-be written to.  The parts are the embedding of objects and the accessibility of
-Windows; the kernel of the documents needs neither.
+Three libraries want the headers of the Active Template Library, which
+are a part of Visual Studio that this machine does not have and that cannot
+be written to.  The libraries are the embedding of objects, the accessibility
+of Windows and the library beside it; the kernel of the documents needs none of
+them.  They are built without sources, so that what is delivered is still
+there.
 
-diff --git a/embedserv/Module_embedserv.mk b/embedserv/Module_embedserv.mk
-index 505efa5c4..be8ffa2c4 100644
---- a/embedserv/Module_embedserv.mk
-+++ b/embedserv/Module_embedserv.mk
-@@ -13,7 +13,6 @@ $(eval $(call gb_Module_Module,embedserv))
- ifeq ($(OS),WNT)
+diff --git a/embedserv/Library_emser.mk b/embedserv/Library_emser.mk
+index d80d63d0c..193aac62d 100644
+--- a/embedserv/Library_emser.mk
++++ b/embedserv/Library_emser.mk
+@@ -10,11 +10,9 @@
  
- $(eval $(call gb_Module_add_targets,embedserv,\
--	Library_emser \
- 	Library_inprocserv \
+ $(eval $(call gb_Library_Library,emser))
+ 
+-$(eval $(call gb_Library_set_componentfile,emser,embedserv/util/emser,services))
+ 
+ $(eval $(call gb_Library_set_include,emser,\
+ 	-I$(SRCDIR)/embedserv/source/inc \
+-	-I$(ATL_INCLUDE) \
+ 	$$(INCLUDE) \
  ))
  
-diff --git a/winaccessibility/Module_winaccessibility.mk b/winaccessibility/Module_winaccessibility.mk
-index 2421164b3..8846ffb83 100644
---- a/winaccessibility/Module_winaccessibility.mk
-+++ b/winaccessibility/Module_winaccessibility.mk
-@@ -12,10 +12,6 @@ $(eval $(call gb_Module_Module,winaccessibility))
- ifeq ($(OS),WNT)
- ifeq ($(COM),MSC)
- $(eval $(call gb_Module_add_targets,winaccessibility,\
--	WinResTarget_uacccom \
--	CustomTarget_ia2_idl \
--	Library_uacccom \
--	Library_winaccessibility \
+diff --git a/winaccessibility/Library_uacccom.mk b/winaccessibility/Library_uacccom.mk
+index c240338f6..682467b78 100644
+--- a/winaccessibility/Library_uacccom.mk
++++ b/winaccessibility/Library_uacccom.mk
+@@ -16,7 +16,6 @@ $(eval $(call gb_Library_use_custom_headers,UAccCOM,winaccessibility/ia2/idl))
+ $(eval $(call gb_Library_set_include,UAccCOM,\
+ 	$$(INCLUDE) \
+ 	-I$(SRCDIR)/winaccessibility/inc \
+-	$(foreach i,$(ATL_INCLUDE), -I$(i)) \
  ))
- endif # COM=MSC
- endif # WNT
+ 
+ $(eval $(call gb_Library_add_defs,UAccCOM,\
+@@ -27,26 +26,6 @@ $(eval $(call gb_Library_use_sdk_api,UAccCOM))
+ 
+ $(eval $(call gb_Library_add_nativeres,UAccCOM,UAccCOM))
+ 
+-$(eval $(call gb_Library_add_exception_objects,UAccCOM,\
+-	winaccessibility/source/UAccCOM/AccAction \
+-	winaccessibility/source/UAccCOM/AccActionBase \
+-	winaccessibility/source/UAccCOM/AccComponent \
+-	winaccessibility/source/UAccCOM/AccEditableText \
+-	winaccessibility/source/UAccCOM/AccHyperLink \
+-	winaccessibility/source/UAccCOM/AccHypertext \
+-	winaccessibility/source/UAccCOM/AccImage \
+-	winaccessibility/source/UAccCOM/AccRelation \
+-	winaccessibility/source/UAccCOM/AccTable \
+-	winaccessibility/source/UAccCOM/AccTableCell \
+-	winaccessibility/source/UAccCOM/AccText \
+-	winaccessibility/source/UAccCOM/AccTextBase \
+-	winaccessibility/source/UAccCOM/AccValue \
+-	winaccessibility/source/UAccCOM/EnumVariant \
+-	winaccessibility/source/UAccCOM/MAccessible \
+-	winaccessibility/source/UAccCOM/StdAfx \
+-	winaccessibility/source/UAccCOM/UAccCOM \
+-	winaccessibility/source/UAccCOM/UNOXWrapper \
+-))
+ 
+ $(eval $(call gb_Library_add_ldflags,UAccCOM,\
+ 	/DEF:$(SRCDIR)/winaccessibility/source/UAccCOM/UAccCOM.def \
+diff --git a/winaccessibility/Library_winaccessibility.mk b/winaccessibility/Library_winaccessibility.mk
+index fd4325845..95117a2a4 100644
+--- a/winaccessibility/Library_winaccessibility.mk
++++ b/winaccessibility/Library_winaccessibility.mk
+@@ -16,36 +16,13 @@ $(eval $(call gb_Library_use_custom_headers,winaccessibility,winaccessibility/ia
+ $(eval $(call gb_Library_set_include,winaccessibility,\
+ 	$$(INCLUDE) \
+ 	-I$(SRCDIR)/winaccessibility/inc \
+-	$(foreach i,$(ATL_INCLUDE), -I$(i)) \
+ ))
+ 
+ $(eval $(call gb_Library_use_sdk_api,winaccessibility))
+ 
+-$(eval $(call gb_Library_set_componentfile,winaccessibility,winaccessibility/source/service/winaccessibility,services))
+ 
+ $(eval $(call gb_Library_use_common_precompiled_header,winaccessibility))
+ 
+-$(eval $(call gb_Library_add_exception_objects,winaccessibility,\
+-	winaccessibility/source/service/AccObject \
+-	winaccessibility/source/service/ResIDGenerator \
+-	winaccessibility/source/service/AccObjectWinManager \
+-	winaccessibility/source/service/AccEventListener \
+-	winaccessibility/source/service/AccComponentEventListener \
+-	winaccessibility/source/service/AccContainerEventListener \
+-	winaccessibility/source/service/AccDialogEventListener \
+-	winaccessibility/source/service/AccFrameEventListener \
+-	winaccessibility/source/service/AccWindowEventListener \
+-	winaccessibility/source/service/AccMenuEventListener \
+-	winaccessibility/source/service/AccTextComponentEventListener \
+-	winaccessibility/source/service/AccObjectContainerEventListener \
+-	winaccessibility/source/service/AccParagraphEventListener \
+-	winaccessibility/source/service/AccDescendantManagerEventListener \
+-	winaccessibility/source/service/AccListEventListener \
+-	winaccessibility/source/service/AccTableEventListener \
+-	winaccessibility/source/service/AccTreeEventListener \
+-	winaccessibility/source/service/AccTopWindowListener \
+-	winaccessibility/source/service/msaaservice_impl \
+-))
+ 
+ $(eval $(call gb_Library_use_externals,winaccessibility,\
+ 	boost_headers \
