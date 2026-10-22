@@ -57,11 +57,25 @@ fi
 # One request for every file the patches need, and the whole shape of the
 # tree: the build system reads files from every part of it.  The sources
 # themselves are fetched as the build asks for them.
+#
+# The tree is already there after the first time, and putting it back in
+# shape takes a long while on a slow disk; so it is only done when a file
+# the patches need is not there yet.
 if [ -n "$patched" ]; then
-  rootdirs=`git -C "$src" ls-tree --name-only HEAD | grep -v '\.md$' | tr '\n' ' '`
-  git -C "$src" sparse-checkout set --no-cone '/*' '!/*/' $rootdirs $patched
-  echo "build-libreoffice-win: fetching the patched files"
-  git -C "$src" read-tree -mu HEAD
+  missing=
+  for f in $patched; do
+    if [ ! -f "$src/$f" ]; then
+      missing="$missing $f"
+    fi
+  done
+  if [ -n "$missing" ]; then
+    rootdirs=`git -C "$src" ls-tree --name-only HEAD | grep -v '\.md$' | tr '\n' ' '`
+    git -C "$src" sparse-checkout set --no-cone '/*' '!/*/' $rootdirs $patched
+    echo "build-libreoffice-win: fetching the patched files"
+    git -C "$src" read-tree -mu HEAD
+  else
+    echo "build-libreoffice-win: the tree is in shape"
+  fi
 fi
 
 if [ ! -f "$src/autogen.sh" ]; then
