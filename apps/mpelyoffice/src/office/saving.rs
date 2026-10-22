@@ -156,6 +156,18 @@ impl Office {
         self.recent.retain(|known| known != path);
         self.recent.insert(0, path.to_path_buf());
         self.recent.truncate(10);
+        self.write_recent();
+    }
+
+    /// Writes the list of the files of late, so the start page has it.
+    fn write_recent(&self) {
+        if self.data.as_os_str().is_empty() {
+            return;
+        }
+        let file = self.data.join("recent.json");
+        if let Ok(bytes) = serde_json::to_vec(&self.recent) {
+            let _ = std::fs::write(file, bytes);
+        }
     }
 }
 #[cfg(test)]

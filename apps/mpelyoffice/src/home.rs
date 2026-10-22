@@ -4,6 +4,8 @@
 //! search box at the top, a panel with new and open on the left, and the
 //! files of late in the middle with their place, author, time and size.
 
+mod sheet;
+
 use std::path::PathBuf;
 
 use ely_gpui_component::{
@@ -51,7 +53,7 @@ pub struct Home {
     /// What the left panel shows.
     section: Section,
     /// Whether the new-document sheet is open.
-    newing: bool,
+    pub(super) newing: bool,
     /// Where the lists are kept.
     data: PathBuf,
     /// The search box.
@@ -63,7 +65,9 @@ pub struct Home {
 impl Home {
     /// The page, with its lists read from the data folder.
     pub fn new(data: PathBuf, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let search = cx.new(|cx| TextInput::new(window, cx).placeholder("搜索文件和技巧…"));
+        let search = cx.new(|cx| {
+            TextInput::new(window, cx).placeholder(ely_ui::i18n::text(cx, "mpelyoffice.home.search", &[]).to_string())
+        });
         let mut home = Self {
             registry: Registry::new(),
             recent: Vec::new(),
@@ -121,22 +125,23 @@ impl Home {
 
 impl EventEmitter<HomeEvent> for Home {}
 
-
 impl Render for Home {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
+        let text = |key: &str| ely_ui::i18n::text(cx, key, &[]).to_string();
         let shown = self.shown();
         let (recent, earlier): (Vec<Entry>, Vec<Entry>) = shown
             .iter()
             .cloned()
             .partition(|entry| files::is_recent(&entry.path));
 
+        // The narrow column with the mark of the program in it.
         let rail = div()
             .flex()
             .flex_col()
-            .gap_3()
-            .w(px(48.0))
+            .w(px(56.0))
             .items_center()
+            .py_4()
             .child(
                 div()
                     .size(px(32.0))
@@ -151,21 +156,23 @@ impl Render for Home {
                             extensions: &[],
                             default_extension: "",
                         }))
-                        .color(gpui::white()),
+                        .color(theme.colors.on_accent),
                     ),
             );
 
+        // The panel: what to make, and the lists of the files.
         let this = cx.entity();
         let new_this = this.clone();
         let open_this = this.clone();
         let panel = div()
-            .w(px(220.0))
+            .w(px(200.0))
             .flex()
             .flex_col()
-            .gap_2()
-            .p_3()
+            .gap_1()
+            .py_4()
+            .pr_3()
             .child(
-                Button::new("home-new", "＋ 新建")
+                Button::new("home-new", text("mpelyoffice.home.new"))
                     .primary()
                     .full_width()
                     .on_click(move |_, _, cx| {
@@ -174,77 +181,80 @@ impl Render for Home {
                     }),
             )
             .child(
-                Button::new("home-open", "打开").full_width().on_click(move |_, _, cx| {
-                    let _ = open_this.update(cx, |_, cx| cx.emit(HomeEvent::Pick));
-                }),
+                Button::new("home-open", text("mpelyoffice.home.open"))
+                    .full_width()
+                    .on_click(move |_, _, cx| {
+                        let _ = open_this.update(cx, |_, cx| cx.emit(HomeEvent::Pick));
+                    }),
             )
-            .child(self.nav_item(Section::Recent, "最近", this.clone()))
-            .child(self.nav_item(Section::Starred, "星标", this.clone()))
+            .child(div().h(px(12.0)))
+            .child(self.nav_item(Section::Recent, text("mpelyoffice.home.recent"), this.clone(), &theme))
+            .child(self.nav_item(Section::Starred, text("mpelyoffice.home.starred"), this.clone(), &theme))
             .child(
                 div()
-                    .text_sm()
-                    .mt_2()
-                    .child("本地")
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .mt_1()
-                            .children(files::local_places().into_iter().map(|(name, path)| {
-                                let this = this.clone();
-                                let search = self.search.clone();
-                                let place = path.clone();
-                                div()
-                                    .id(format!("home-place-{name}"))
-                                    .text_sm()
-                                    .cursor_pointer()
-                                    .on_click(move |_, _, cx| {
-                                        let text = place.display().to_string();
-                                        let _ = this.update(cx, |home, _| home.query = text.clone());
-                                        search.update(cx, |input, cx| input.set_text(text, cx));
-                                    })
-                                    .child(name)
-                            })),
-                    ),
+                    .text_xs()
+                    .text_color(theme.colors.fg_subtle)
+                    .mt_3()
+                    .mb_1()
+                    .px_2()
+                    .child(text("mpelyoffice.home.local")),
+            )
+            .child(self.places(cx, &theme));
+
+        // The name of the program and the field to search in.
+        let head = div()
+            .flex()
+            .items_center()
+            .gap_6()
+            .child(div().text_xl().child(text("mpelyoffice.start.title")))
+            .child(
+                // A column, so the field takes the width it is given.
+                div()
+                    .w(px(480.0))
+                    .flex()
+                    .flex_col()
+                    .child(Input::new(&self.search)),
             );
 
+        // The files of late, in two groups: the ones of this week and the
+        // ones before.
         let mut list = div().flex().flex_col();
         if !recent.is_empty() {
             list = list.child(
                 div()
                     .text_lg()
-                    .mt_4()
+                    .mt_6()
                     .mb_2()
-                    .child("最近")
-                    .child(self.columns()),
+                    .child(text("mpelyoffice.home.group.recent"))
+                    .child(self.columns(cx, &theme)),
             );
             for entry in recent.iter() {
-                list = list.child(self.row(entry, cx));
+                list = list.child(self.row(entry, cx, &theme));
             }
         }
         if !earlier.is_empty() {
             list = list.child(
                 div()
                     .text_lg()
-                    .mt_4()
+                    .mt_6()
                     .mb_2()
-                    .child("更早")
-                    .child(self.columns()),
+                    .child(text("mpelyoffice.home.group.earlier"))
+                    .child(self.columns(cx, &theme)),
             );
             for entry in earlier.iter() {
-                list = list.child(self.row(entry, cx));
+                list = list.child(self.row(entry, cx, &theme));
             }
         }
         if shown.is_empty() {
             list = list.child(
                 div()
                     .text_sm()
-                    .mt_4()
+                    .text_color(theme.colors.fg_subtle)
+                    .mt_6()
                     .child(if self.query.is_empty() {
-                        "还没有打开过文件。"
+                        text("mpelyoffice.home.empty")
                     } else {
-                        "没有找到这个文件。"
+                        text("mpelyoffice.home.not_found")
                     }),
             );
         }
@@ -258,22 +268,8 @@ impl Render for Home {
             .flex()
             .flex_col()
             .p_6()
-            .gap_4()
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_3()
-                    .child(div().text_xl().child("MPelyoffice"))
-                    .child(
-                        // A column, so the field takes the width it is given.
-                        div()
-                            .w(px(520.0))
-                            .flex()
-                            .flex_col()
-                            .child(Input::new(&self.search)),
-                    ),
-            )
+            .gap_6()
+            .child(head)
             .child(
                 div()
                     .flex()
@@ -290,7 +286,7 @@ impl Render for Home {
             );
 
         if self.newing {
-            return div().size_full().child(page).child(self.new_sheet(cx));
+            return div().size_full().child(page).child(self.new_sheet(cx, &theme));
         }
         page
     }
@@ -298,14 +294,25 @@ impl Render for Home {
 
 impl Home {
     /// One entry of the left panel.
-    fn nav_item(&self, section: Section, label: &'static str, this: Entity<Home>) -> impl IntoElement {
+    fn nav_item(
+        &self,
+        section: Section,
+        label: String,
+        this: Entity<Home>,
+        theme: &ely_gpui_component::theme::Theme,
+    ) -> impl IntoElement {
         let active = self.section == section;
         let mut item = div()
             .id(format!("home-nav-{section:?}"))
             .text_sm()
-            .cursor_pointer();
+            .cursor_pointer()
+            .px_2()
+            .py_1()
+            .rounded_md();
         if active {
-            item = item.font_weight(gpui::FontWeight::SEMIBOLD);
+            item = item.bg(theme.colors.active).font_weight(gpui::FontWeight::SEMIBOLD);
+        } else {
+            item = item.hover(|style| style.bg(theme.colors.hover));
         }
         item.on_click(move |_, _, cx| {
             let _ = this.update(cx, |home, _| home.section = section);
@@ -313,130 +320,102 @@ impl Home {
         .child(label)
     }
 
-    /// The column heads of the list.
-    fn columns(&self) -> impl IntoElement {
+    /// The folders of the local places.
+    fn places(&self, cx: &Context<Self>, theme: &ely_gpui_component::theme::Theme) -> impl IntoElement {
+        let text = |key: &str| ely_ui::i18n::text(cx, key, &[]).to_string();
+        let names = [
+            ("mpelyoffice.home.desktop", "Desktop"),
+            ("mpelyoffice.home.documents", "Documents"),
+            ("mpelyoffice.home.downloads", "Downloads"),
+        ];
         div()
             .flex()
-            .gap_4()
+            .flex_col()
+            .gap_1()
+            .children(files::local_places().into_iter().map(|(name, path)| {
+                let this = cx.entity();
+                let folder_name = name.clone();
+                let search = self.search.clone();
+                let place = path.clone();
+                let label = names
+                    .iter()
+                    .find(|(_, known)| *known == folder_name)
+                    .map(|(key, _)| text(key))
+                    .unwrap_or_else(|| name.clone());
+                div()
+                    .id(format!("home-place-{name}"))
+                    .text_sm()
+                    .cursor_pointer()
+                    .px_2()
+                    .py_1()
+                    .rounded_md()
+                    .hover(|style| style.bg(theme.colors.hover))
+                    .on_click(move |_, _, cx| {
+                        let text = place.display().to_string();
+                        let _ = this.update(cx, |home, _| home.query = text.clone());
+                        search.update(cx, |input, cx| input.set_text(text, cx));
+                    })
+                    .child(label)
+            }))
+    }
+
+    /// The column heads of the list.
+    fn columns(&self, cx: &Context<Self>, theme: &ely_gpui_component::theme::Theme) -> impl IntoElement {
+        let text = |key: &str| ely_ui::i18n::text(cx, key, &[]).to_string();
+        div()
+            .flex()
+            .gap_2()
             .text_xs()
-            .child(div().flex_1().child("文件位置"))
-            .child(div().w(px(120.0)).child("创建者"))
-            .child(div().w(px(140.0)).child("最近修改"))
-            .child(div().w(px(70.0)).child("大小"))
+            .text_color(theme.colors.fg_subtle)
+            .px_2()
+            .child(div().w(px(220.0)))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .child(text("mpelyoffice.home.column.place")),
+            )
+            .child(div().w(px(100.0)).child(text("mpelyoffice.home.column.author")))
+            .child(div().w(px(120.0)).child(text("mpelyoffice.home.column.changed")))
+            .child(div().w(px(60.0)).child(text("mpelyoffice.home.column.size")))
     }
 
     /// One file of the list.
-    fn row(&self, entry: &Entry, cx: &mut Context<Self>) -> impl IntoElement {
+    fn row(&self, entry: &Entry, cx: &Context<Self>, theme: &ely_gpui_component::theme::Theme) -> impl IntoElement {
         let path = entry.path.clone();
         let this = cx.entity();
         let name = entry.name.clone();
+        let place = entry.place.clone();
+        let author = entry.author.clone();
+        let changed = entry.changed.clone();
+        let size = entry.size.clone();
+        let mark = kinds::mark(entry.kind);
         div()
             .id(format!("home-row-{name}"))
             .flex()
             .items_center()
             .gap_2()
             .py_1()
+            .px_2()
+            .rounded_md()
             .cursor_pointer()
+            .hover(|style| style.bg(theme.colors.hover))
             .on_click(move |_, _, cx| {
                 let _ = this.update(cx, |_, cx| cx.emit(HomeEvent::Open(path.clone())));
             })
-            .child(Icon::new(kinds::mark(entry.kind)))
-            .child(div().w(px(280.0)).truncate().child(entry.name.clone()))
-            .child(div().text_xs().child("本地"))
-            .child(div().flex_1().truncate().text_xs().child(entry.place.clone()))
-            .child(div().w(px(120.0)).truncate().text_xs().child(entry.author.clone()))
-            .child(div().w(px(140.0)).truncate().text_xs().child(entry.changed.clone()))
-            .child(div().w(px(70.0)).text_xs().child(entry.size.clone()))
-    }
-
-    /// The sheet that asks what kind of document to make.
-    fn new_sheet(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let asked: [(&'static str, EngineKind); 6] = [
-            (
-                "空白文档",
-                EngineKind {
-                    id: "document",
-                    extensions: &["docx", "odt", "doc", "rtf"],
-                    default_extension: "docx",
-                },
-            ),
-            (
-                "空白表格",
-                EngineKind {
-                    id: "spreadsheet",
-                    extensions: &["xlsx", "ods", "xls", "csv", "tsv"],
-                    default_extension: "xlsx",
-                },
-            ),
-            (
-                "空白演示",
-                EngineKind {
-                    id: "presentation",
-                    extensions: &["pptx", "odp", "ppt"],
-                    default_extension: "pptx",
-                },
-            ),
-            (
-                "PDF 文档",
-                EngineKind {
-                    id: "pdf",
-                    extensions: &["pdf"],
-                    default_extension: "pdf",
-                },
-            ),
-            (
-                "Markdown 文档",
-                EngineKind {
-                    id: "markdown",
-                    extensions: &["md", "markdown"],
-                    default_extension: "md",
-                },
-            ),
-            (
-                "文本文件",
-                EngineKind {
-                    id: "text",
-                    extensions: &["txt", "log", "ini", "conf"],
-                    default_extension: "txt",
-                },
-            ),
-        ];
-        let this = cx.entity();
-        let mut grid = div().flex().flex_wrap().gap_3();
-        for (label, kind) in asked {
-            let this = this.clone();
-            grid = grid.child(
-                Button::new(format!("home-new-{}", kind.id), label).on_click(move |_, _, cx| {
-                    let _ = this.update(cx, |home, cx| {
-                        home.newing = false;
-                        cx.emit(HomeEvent::New(kind));
-                    });
-                }),
-            );
-        }
-        div()
-            .absolute()
-            .inset_0()
-            .flex()
-            .items_center()
-            .justify_center()
-            .bg(gpui::black().opacity(0.35))
+            .child(Icon::new(mark))
+            .child(div().w(px(220.0)).truncate().child(name))
             .child(
                 div()
-                    .w(px(520.0))
-                    .rounded_lg()
-                    .bg(gpui::white())
-                    .p_6()
-                    .flex()
-                    .flex_col()
-                    .gap_4()
-                    .child(div().text_lg().child("新建"))
-                    .child(grid)
-                    .child(
-                        Button::new("home-new-cancel", "取消").on_click(move |_, _, cx| {
-                            let _ = this.update(cx, |home, _| home.newing = false);
-                        }),
-                    ),
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .text_xs()
+                    .text_color(theme.colors.fg_subtle)
+                    .child(place),
             )
+            .child(div().w(px(100.0)).truncate().text_xs().child(author))
+            .child(div().w(px(120.0)).truncate().text_xs().child(changed))
+            .child(div().w(px(60.0)).text_xs().child(size))
     }
 }

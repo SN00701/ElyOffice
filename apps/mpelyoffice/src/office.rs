@@ -47,6 +47,8 @@ pub struct Office {
     next: u64,
     untitled: u32,
     recent: Vec<PathBuf>,
+    /// Where the lists of the files are kept.
+    data: PathBuf,
     /// A message about what the window just did or refused to do.
     notice: Option<SharedString>,
     /// The window was asked to close while a document was unsaved.
@@ -74,8 +76,9 @@ pub fn open(app: ely_platform::AppId, window: &mut Window, cx: &mut App) -> Enti
     // The start page, with the files of late.
     let data =
         ely_platform::data_dir(app).unwrap_or_else(|_| std::env::temp_dir().join("MPelyoffice"));
-    let home = cx.new(|cx| Home::new(data, window, cx));
+    let home = cx.new(|cx| Home::new(data.clone(), window, cx));
     office.update(cx, |office, cx| {
+        office.data = data.clone();
         office.home = Some(home.clone());
         office.home_watch = Some(cx.subscribe(&home, |office, _, event, cx| match event {
             HomeEvent::Open(path) => office.open_path(path.clone(), cx),
@@ -122,6 +125,7 @@ impl Office {
             next: 0,
             untitled: 0,
             recent: Vec::new(),
+        data: PathBuf::new(),
             notice: None,
             pending_close: false,
             pending_tab: None,
@@ -156,6 +160,7 @@ impl Office {
             .map(|name| name.to_string_lossy().to_string())
             .unwrap_or_else(|| path.display().to_string());
         let source = Source::File(path.clone());
+        self.remember(&path);
         self.push(kind, name, Some(path), source, cx);
     }
 
