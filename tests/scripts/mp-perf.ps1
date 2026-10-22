@@ -54,6 +54,7 @@ Write-Output "the runs: $Runs"
 
 # The time from the start of the program to the window being there.
 $starts = @()
+$idle = 0
 for ($run = 0; $run -lt $Runs; $run++) {
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
     $process = Start-Process -FilePath $Program -PassThru
@@ -71,15 +72,13 @@ for ($run = 0; $run -lt $Runs; $run++) {
         continue
     }
     $starts += $watch.Elapsed.TotalMilliseconds
-    if ($run -eq 0) {
-        # The memory of the program when it is doing nothing.
-        Start-Sleep -Seconds 2
-        $idle = Get-WorkingSet $process.Id
-        Write-Output "  the memory of the window alone: $idle MB"
-    }
+    # The memory of the program when it is doing nothing, once it has settled.
+    Start-Sleep -Seconds 3
+    $idle = Get-WorkingSet $process.Id
     if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
     Start-Sleep -Milliseconds 300
 }
+Write-Output "  the memory of the window alone: $idle MB"
 
 if ($starts.Count -gt 0) {
     $sorted = $starts | Sort-Object
